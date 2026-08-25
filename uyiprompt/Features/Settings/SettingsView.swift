@@ -19,17 +19,11 @@ struct SettingsView: View {
                         .padding(.top, 28)
                 } else {
                     VStack(alignment: .leading, spacing: 18) {
-                        HStack(spacing: 10) {
-                            Image(systemName: model.page.symbol)
-                                .font(.title2)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(Color.accentColor)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(model.page.title)
-                                    .font(.title.weight(.semibold))
-                                Text(model.page.subtitle)
-                                    .foregroundStyle(.secondary)
-                            }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(model.page.title)
+                                .font(.title.weight(.semibold))
+                            Text(model.page.subtitle)
+                                .foregroundStyle(.secondary)
                         }
                         page
                     }
@@ -58,7 +52,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("uyiprompt")
                         .font(.headline)
-                    Text("菜单栏改写")
+                    Text("菜单栏改写 / 翻译")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -117,61 +111,147 @@ struct SettingsView: View {
     private var generalPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Form {
-                    Section("外观") {
+                settingsBlock("外观") {
+                    HStack {
+                        Text("主题")
+                        Spacer()
                         Picker("外观", selection: $session.appearance) {
                             ForEach(AppSession.AppearancePreference.allCases) { item in
                                 Text(item.title).tag(item)
                             }
                         }
-                        .pickerStyle(.segmented)
                         .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 260)
                         .onChange(of: session.appearance) { _, _ in
                             windows.applyAppearance()
                         }
                     }
-                    Section("改写语言") {
+                    .padding(12)
+                }
+
+                settingsBlock("改写语言") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("输出语言")
+                            Text("自动会保持原文语言。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
                         Picker("语言", selection: $session.enhanceLanguage) {
                             ForEach(AppSession.EnhanceLanguage.allCases) { item in
                                 Text(item.title).tag(item)
                             }
                         }
+                        .labelsHidden()
+                        .frame(width: 200)
                     }
-                    Section("权限") {
-                        LabeledContent("辅助功能") {
-                            Text(accessibilityOn ? "已开启" : "未开启")
-                                .foregroundStyle(accessibilityOn ? Color.secondary : Color.red)
+                    .padding(12)
+                }
+
+                settingsBlock("翻译") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("目标语言")
+                            Text("自动：中文译成英语，其它语言译成中文。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                        Spacer()
+                        Picker("译成", selection: $session.translateLanguage) {
+                            ForEach(TranslateLanguage.allCases) { item in
+                                Text(item.title).tag(item)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 200)
+                    }
+                    .padding(12)
+                }
+
+                settingsBlock("权限") {
+                    HStack(alignment: .center, spacing: 10) {
+                        Image(systemName: "accessibility")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(accessibilityOn ? Color.green : Color.orange)
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("辅助功能")
+                            Text("读取选中的文字，并把改写或译文写回去。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        StatusPill(
+                            text: accessibilityOn ? "已开启" : "未开启",
+                            tint: accessibilityOn ? .green : .red
+                        )
                         if !accessibilityOn {
-                            Button("去开启…") {
-                                SelectionService.promptForAccessibility()
-                                SelectionService.openAccessibilitySettings()
+                            Button("去开启") {
+                                SelectionService.requestAccess()
                             }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                         }
-                        Text("用于读取选中的文字，并把改写结果粘贴回去。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
-                    Section("桌面") {
-                        Toggle("在程序坞显示图标", isOn: $session.showDockIcon)
-                            .onChange(of: session.showDockIcon) { _, _ in
-                                windows.applyDockPreference()
-                            }
-                        Toggle("面板始终置顶", isOn: $session.panelPinned)
-                            .onChange(of: session.panelPinned) { _, _ in
-                                windows.applyPanelPin()
-                            }
-                        Toggle("改写后弹出结果窗", isOn: $session.enhancePopoverEnabled)
-                        Toggle("按快捷键后立刻开始改写", isOn: $session.autoEnhanceOnShortcut)
-                        Text("关掉后，会先弹出窗口让你选风格再改写。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    .padding(12)
+                }
+
+                settingsBlock("桌面") {
+                    VStack(spacing: 0) {
+                        toggleRow("在程序坞显示图标", isOn: $session.showDockIcon) {
+                            windows.applyDockPreference()
+                        }
+                        Divider().opacity(0.12).padding(.leading, 12)
+                        toggleRow("面板始终置顶", isOn: $session.panelPinned) {
+                            windows.applyPanelPin()
+                        }
+                        Divider().opacity(0.12).padding(.leading, 12)
+                        toggleRow("改写后弹出结果窗", isOn: $session.enhancePopoverEnabled)
+                        Divider().opacity(0.12).padding(.leading, 12)
+                        VStack(alignment: .leading, spacing: 4) {
+                            toggleRow("按快捷键后立刻开始改写", isOn: $session.autoEnhanceOnShortcut)
+                            Text("关掉后，会先弹出窗口让你选风格再改写。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 10)
+                        }
                     }
                 }
-                .formStyle(.grouped)
-                .scrollContentBackground(.hidden)
             }
+            .padding(.bottom, 12)
         }
+    }
+
+    private func settingsBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
+                    .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
+            )
+        }
+    }
+
+    private func toggleRow(_ title: String, isOn: Binding<Bool>, onChange: @escaping () -> Void = {}) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .toggleStyle(.switch)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .onChange(of: isOn.wrappedValue) { _, _ in onChange() }
     }
 
     private var profilesPage: some View {
@@ -181,44 +261,65 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("添加风格") { session.addCustomProfile() }
+                Button {
+                    session.addCustomProfile()
+                } label: {
+                    Label("添加风格", systemImage: "plus")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
-            List {
-                ForEach($session.profiles) { $profile in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: profile.symbol)
-                                .font(.body)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 20)
-                            TextField("名称", text: $profile.name)
-                                .font(.headline)
-                            Spacer()
-                            if session.currentProfileID == profile.id {
-                                Text("当前")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Button("使用") { session.currentProfileID = profile.id }
-                                .disabled(session.currentProfileID == profile.id)
-                            if !profile.builtin {
-                                Button("删除", role: .destructive) {
-                                    session.deleteProfile(profile)
-                                }
-                            }
-                        }
-                        Text("给模型的说明")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("给模型的说明", text: $profile.systemPrompt, axis: .vertical)
-                            .lineLimit(3...8)
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach($session.profiles) { $profile in
+                        profileCard($profile)
                     }
-                    .padding(.vertical, 6)
+                }
+                .padding(.bottom, 8)
+            }
+        }
+    }
+
+    private func profileCard(_ profile: Binding<WritingProfile>) -> some View {
+        let current = session.currentProfileID == profile.wrappedValue.id
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: profile.wrappedValue.symbol)
+                    .font(.body.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 32, height: 32)
+                    .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                TextField("名称", text: profile.name)
+                    .font(.headline)
+                    .textFieldStyle(.plain)
+                Spacer()
+                if current {
+                    StatusPill(text: "当前", tint: Color.accentColor)
+                } else {
+                    Button("使用") { session.currentProfileID = profile.wrappedValue.id }
+                        .controlSize(.small)
+                }
+                if !profile.wrappedValue.builtin {
+                    Button("删除", role: .destructive) {
+                        session.deleteProfile(profile.wrappedValue)
+                    }
+                    .controlSize(.small)
                 }
             }
-            .scrollContentBackground(.hidden)
+            TextField("给模型的说明", text: profile.systemPrompt, axis: .vertical)
+                .font(.callout)
+                .lineLimit(2...6)
+                .textFieldStyle(.plain)
+                .padding(8)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
+        .padding(12)
+        .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
+                .strokeBorder(current ? Color.accentColor.opacity(0.28) : UIChrome.cardStroke, lineWidth: 1)
+        )
     }
 
     private var appDefaultsPage: some View {
@@ -255,17 +356,24 @@ struct SettingsView: View {
             LabeledContent {
                 Text("⌘⇧U").font(.body.monospaced())
             } label: {
-                Label("打开改写面板", systemImage: "macwindow")
+                Label("打开面板", systemImage: "macwindow")
             }
             LabeledContent {
                 Text("⌘⇧E").font(.body.monospaced())
             } label: {
                 Label("改写选中的文字", systemImage: "character.cursor.ibeam")
             }
-            HowToStrip()
-            Text("在微信、浏览器、编辑器里选中文字后按 ⌘⇧E，改完点「替换原文」写回去。")
+            LabeledContent {
+                Text("⌘⇧T").font(.body.monospaced())
+            } label: {
+                Label("翻译选中的文字", systemImage: "globe")
+            }
+            HowToStrip(shortcut: "⌘⇧E", action: "点「替换」")
+            HowToStrip(shortcut: "⌘⇧T", action: "点「替换为译文」")
+            Text("在微信、浏览器、编辑器里选中文字后按 ⌘⇧E 改写，或 ⌘⇧T 翻译。浏览器里 ⌘⇧T 可能是「重新打开标签页」，那时用面板里的翻译即可。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)

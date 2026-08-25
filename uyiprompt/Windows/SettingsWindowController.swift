@@ -23,7 +23,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .providers: "选服务商、填密钥。和 Cherry Studio 一样，每个供应商单独配置。"
-        case .general: "外观、权限和改写时的行为。"
+        case .general: "外观、权限、改写和翻译时的行为。"
         case .profiles: "每种风格是一套给模型的说明，可随时改。"
         case .appDefaults: "给邮件、编辑器等指定默认风格。"
         case .shortcuts: "全局有效，在别的软件里也能用。"
@@ -60,12 +60,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         let window = ensureWindow()
         applyMode()
-        if window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
-        } else {
-            ProductWindowFactory.present(window, size: WindowMetrics.settingsSignedIn)
-        }
+        ProductWindowFactory.present(window, size: WindowMetrics.settingsSignedIn)
     }
 
     private func applyMode() {

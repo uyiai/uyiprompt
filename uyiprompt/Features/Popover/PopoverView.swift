@@ -11,6 +11,9 @@ struct PopoverView: View {
     var onCopy: () -> Void
     var onRetry: () -> Void
     var onSwitchProfile: (String) -> Void
+    var onSwitchLanguage: (TranslateLanguage) -> Void
+
+    private var isTranslate: Bool { model.state.job == .translate }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -23,31 +26,49 @@ struct PopoverView: View {
                 .padding(12)
         }
         .frame(minWidth: WindowMetrics.popoverMin.width, minHeight: WindowMetrics.popoverMin.height)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.28))
         .onChange(of: model.state.profileId) { _, id in
-            mode = ResultViewMode.default(forProfileID: id)
+            mode = isTranslate ? .edit : ResultViewMode.default(forProfileID: id)
+        }
+        .onChange(of: model.state.job) { _, _ in
+            mode = isTranslate ? .edit : ResultViewMode.default(forProfileID: model.state.profileId)
         }
         .onAppear {
-            mode = ResultViewMode.default(forProfileID: model.state.profileId)
+            mode = isTranslate ? .edit : ResultViewMode.default(forProfileID: model.state.profileId)
         }
     }
 
     private var header: some View {
         HStack(spacing: 8) {
-            Picker("写作风格", selection: profileBinding) {
-                ForEach(session.profiles) { profile in
-                    Label(profile.name, systemImage: profile.symbol).tag(profile.id)
+            if isTranslate {
+                Image(systemName: "globe")
+                    .foregroundStyle(Color.accentColor)
+                    .font(.body.weight(.semibold))
+                Picker("译成", selection: languageBinding) {
+                    ForEach(TranslateLanguage.allCases) { language in
+                        Text(language.title).tag(language)
+                    }
                 }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .disabled(model.state.status == .loading)
+                if !model.state.originalText.isEmpty {
+                    Text(TranslateLanguage.routeLabel(preference: model.state.translateLanguage, text: model.state.originalText))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tertiary)
+                }
+            } else {
+                Picker("写作风格", selection: profileBinding) {
+                    ForEach(session.profiles) { profile in
+                        Label(profile.name, systemImage: profile.symbol).tag(profile.id)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .disabled(model.state.status == .loading)
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .disabled(model.state.status == .loading)
             Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
-            .help("关闭")
-            .foregroundStyle(.secondary)
+            IconButton(symbol: "xmark", help: "关闭", action: onClose)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -57,27 +78,33 @@ struct PopoverView: View {
     private var bodyContent: some View {
         switch model.state.status {
         case .loading:
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("正在用「\(model.state.profileName)」改写…")
+                    Text(loadingTitle)
                         .foregroundStyle(.secondary)
                 }
                 if !model.state.originalText.isEmpty {
                     Text(model.state.originalText)
                         .lineLimit(4)
                         .foregroundStyle(.tertiary)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         case .error:
             VStack(alignment: .leading, spacing: 8) {
-                Text(model.state.error)
-                    .foregroundStyle(Color.red)
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Color.red)
+                    Text(model.state.error)
+                        .foregroundStyle(Color.red)
+                }
                 if model.state.error.contains("辅助功能") || model.state.error.contains("Accessibility") {
-                    Button("去开启辅助功能") {
-                        SelectionService.promptForAccessibility()
-                        SelectionService.openAccessibilitySettings()
+                    Button("去系统设置重新授权") {
+                        SelectionService.requestAccess()
                     }
                 }
                 if model.state.error.contains("API Key") || model.state.error.contains("密钥") {
@@ -89,17 +116,55 @@ struct PopoverView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         case .ready:
             VStack(alignment: .leading, spacing: 8) {
-                if !model.state.enhancedText.isEmpty {
-                    ResultViewToggle(mode: $mode)
+                if isTranslate {
+                    translateResult
+                } else {
+                    if !model.state.enhancedText.isEmpty {
+                        ResultViewToggle(mode: $mode)
+                    }
+                    ScrollView {
+                        if model.state.enhancedText.isEmpty {
+                            Text(model.state.originalText)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if mode == .changes {
+                            ResultDiffView(original: model.state.originalText, current: model.state.enhancedText)
+                        } else {
+                            Text(model.state.enhancedText)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                 }
-                ScrollView {
-                    if model.state.enhancedText.isEmpty {
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var translateResult: some View {
+        if model.state.enhancedText.isEmpty {
+            ScrollView {
+                Text(model.state.originalText)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("原文")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
                         Text(model.state.originalText)
                             .textSelection(.enabled)
+                            .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                    } else if mode == .changes {
-                        ResultDiffView(original: model.state.originalText, current: model.state.enhancedText)
-                    } else {
+                    }
+                    Divider().opacity(0.2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("译文")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
                         Text(model.state.enhancedText)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,7 +179,7 @@ struct PopoverView: View {
             if model.state.status == .error {
                 Button("再试一次", action: onRetry)
             } else if model.state.status == .ready && model.state.enhancedText.isEmpty {
-                Button("开始改写", action: onRetry)
+                Button(isTranslate ? "开始翻译" : "开始改写", action: onRetry)
                     .buttonStyle(.borderedProminent)
             } else {
                 Button(copied ? "已复制" : "复制") {
@@ -126,18 +191,35 @@ struct PopoverView: View {
             }
             Spacer()
             if !(model.state.status == .ready && model.state.enhancedText.isEmpty) {
-                Button("替换原文", action: onReplace)
-                    .buttonStyle(.borderedProminent)
-                    .help("用改写结果覆盖选中的文字")
-                    .disabled(model.state.status != .ready || model.state.enhancedText.isEmpty)
+                Button(action: onReplace) {
+                    Label(isTranslate ? "替换为译文" : "替换原文", systemImage: "arrow.uturn.forward")
+                }
+                .buttonStyle(.borderedProminent)
+                .help(isTranslate ? "用译文覆盖选中的文字" : "用改写结果覆盖选中的文字")
+                .disabled(model.state.status != .ready || model.state.enhancedText.isEmpty)
             }
         }
+    }
+
+    private var loadingTitle: String {
+        if isTranslate {
+            let target = TranslateLanguage.resolve(model.state.translateLanguage, text: model.state.originalText)
+            return "正在译成\(target.shortTitle)…"
+        }
+        return "正在用「\(model.state.profileName)」改写…"
     }
 
     private var profileBinding: Binding<String> {
         Binding(
             get: { model.state.profileId.isEmpty ? session.currentProfileID : model.state.profileId },
             set: { onSwitchProfile($0) }
+        )
+    }
+
+    private var languageBinding: Binding<TranslateLanguage> {
+        Binding(
+            get: { model.state.translateLanguage },
+            set: { onSwitchLanguage($0) }
         )
     }
 }
@@ -151,14 +233,16 @@ struct PopoverView: View {
                 profileName: "Grammar",
                 originalText: "lets meet tmrw",
                 enhancedText: "Let's meet tomorrow.",
-                error: ""
+                error: "",
+                job: .enhance
             )
         ),
         onClose: {},
         onReplace: {},
         onCopy: {},
         onRetry: {},
-        onSwitchProfile: { _ in }
+        onSwitchProfile: { _ in },
+        onSwitchLanguage: { _ in }
     )
     .environmentObject(AppSession())
     .environmentObject(AppWindows())

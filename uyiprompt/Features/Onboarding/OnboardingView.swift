@@ -72,24 +72,59 @@ struct OnboardingView: View {
     }
 
     private var welcome: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 20) {
             Spacer(minLength: 8)
             AppMark(size: 64)
-            Text("选中文字，一键改写")
+            Text("选中文字，改写或翻译")
                 .font(.largeTitle.weight(.semibold))
-            HStack(spacing: 8) {
-                KeyCap(text: "⌘")
-                KeyCap(text: "⇧")
-                KeyCap(text: "E")
+            HStack(spacing: 16) {
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        KeyCap(text: "⌘")
+                        KeyCap(text: "⇧")
+                        KeyCap(text: "E")
+                    }
+                    Text("改写")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        KeyCap(text: "⌘")
+                        KeyCap(text: "⇧")
+                        KeyCap(text: "T")
+                    }
+                    Text("翻译")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
             }
-            Text("uyiprompt 待在菜单栏。在微信、浏览器、编辑器里选一段话，改完点「替换」写回去。")
+            Text("待在菜单栏。在微信、浏览器、编辑器里选一段话，改完或译完点「替换」写回去。")
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 460)
+                .frame(maxWidth: 440)
+            HStack(spacing: 10) {
+                featureChip(symbol: "pencil.and.outline", title: "改写")
+                featureChip(symbol: "globe", title: "翻译")
+                featureChip(symbol: "arrow.uturn.forward", title: "写回原文")
+            }
+            .padding(.top, 4)
             Spacer(minLength: 8)
         }
         .padding(.horizontal, 32)
+    }
+
+    private func featureChip(symbol: String, title: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+                .foregroundStyle(Color.accentColor)
+            Text(title)
+                .font(.callout.weight(.medium))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Color.primary.opacity(0.05), in: Capsule())
     }
 
     private var access: some View {
@@ -106,11 +141,12 @@ struct OnboardingView: View {
             Text(accessibilityOn ? "已经开启，可以继续" : "还没开启，点下面会跳到系统设置")
                 .foregroundStyle(accessibilityOn ? Color.green : Color.secondary)
             if !accessibilityOn {
-                Button("打开系统设置") {
-                    SelectionService.promptForAccessibility()
-                    SelectionService.openAccessibilitySettings()
+                Button {
+                    SelectionService.requestAccess()
+                } label: {
+                    Label("打开系统设置", systemImage: "gearshape")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             }
             Spacer(minLength: 8)

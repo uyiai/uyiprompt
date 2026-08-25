@@ -64,9 +64,9 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
 
     var suggestedModels: [String] {
         switch self {
-        case .deepseek: ["deepseek-chat", "deepseek-reasoner"]
-        case .openai: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]
-        case .moonshot: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"]
+        case .deepseek: ["deepseek-v4-flash", "deepseek-v4-pro"]
+        case .openai: ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]
+        case .moonshot: ["kimi-k2.6", "kimi-k3", "kimi-k2.7-code"]
         case .custom: []
         }
     }
@@ -74,15 +74,40 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
     var defaultModel: String {
         suggestedModels.first ?? ""
     }
+
+    var supportsThinkingToggle: Bool {
+        self != .custom
+    }
+
+    func displayName(for model: String) -> String {
+        switch model {
+        case "deepseek-v4-flash": "Flash · 快"
+        case "deepseek-v4-pro": "Pro · 强"
+        case "deepseek-chat": "Flash（旧名）"
+        case "deepseek-reasoner": "思考（旧名）"
+        case "gpt-5.6-luna": "Luna · 快省"
+        case "gpt-5.6-terra": "Terra · 均衡"
+        case "gpt-5.6-sol": "Sol · 最强"
+        case "gpt-4.1-mini": "4.1 mini"
+        case "gpt-4.1": "4.1"
+        case "gpt-4o-mini": "4o mini"
+        case "kimi-k2.6": "K2.6 · 通用"
+        case "kimi-k3": "K3 · 旗舰"
+        case "kimi-k2.7-code": "K2.7 · 编程"
+        case "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k": "K2.6（旧名）"
+        default: model
+        }
+    }
 }
 
 struct LLMProviderSettings: Codable, Equatable {
     var key: String
     var model: String
     var baseURL: String
+    var thinkingEnabled: Bool
 
     static func preset(_ provider: LLMProvider) -> LLMProviderSettings {
-        LLMProviderSettings(key: "", model: provider.defaultModel, baseURL: provider.defaultBaseURL)
+        LLMProviderSettings(key: "", model: provider.defaultModel, baseURL: provider.defaultBaseURL, thinkingEnabled: false)
     }
 }
 
@@ -135,7 +160,33 @@ struct LLMSettings: Equatable {
         if !hasKey { return "还差 API Key" }
         if !hasEndpoint { return "还差接口地址" }
         if active.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "还差模型名" }
-        return "\(activeProvider.title) · \(active.model)"
+        let think = active.thinkingEnabled ? " · 思考" : ""
+        return "\(activeProvider.title) · \(activeProvider.displayName(for: active.model))\(think)"
+    }
+
+    mutating func migrateRetiredModels() {
+        let aliases: [String: (model: String, thinking: Bool?)] = [
+            "deepseek-chat": ("deepseek-v4-flash", false),
+            "deepseek-reasoner": ("deepseek-v4-flash", true),
+            "gpt-4.1-mini": ("gpt-5.6-luna", nil),
+            "gpt-4o-mini": ("gpt-5.6-luna", nil),
+            "gpt-4.1": ("gpt-5.6-terra", nil),
+            "gpt-4o": ("gpt-5.6-terra", nil),
+            "moonshot-v1-8k": ("kimi-k2.6", nil),
+            "moonshot-v1-32k": ("kimi-k2.6", nil),
+            "moonshot-v1-128k": ("kimi-k2.6", nil),
+        ]
+        for provider in LLMProvider.allCases {
+            var settings = endpoint(provider)
+            let current = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let mapped = aliases[current] {
+                settings.model = mapped.model
+                if let thinking = mapped.thinking {
+                    settings.thinkingEnabled = thinking
+                }
+                providers[provider] = settings
+            }
+        }
     }
 }
 
@@ -144,6 +195,7 @@ extension LLMSettings: Codable {
         var key: String
         var model: String
         var baseURL: String?
+        var thinkingEnabled: Bool?
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -166,7 +218,8 @@ extension LLMSettings: Codable {
                 mapped[provider] = LLMProviderSettings(
                     key: value.key,
                     model: value.model.isEmpty ? provider.defaultModel : value.model,
-                    baseURL: (value.baseURL?.isEmpty == false) ? value.baseURL! : provider.defaultBaseURL
+                    baseURL: (value.baseURL?.isEmpty == false) ? value.baseURL! : provider.defaultBaseURL,
+                    thinkingEnabled: value.thinkingEnabled ?? false
                 )
             }
         }
@@ -178,7 +231,12 @@ extension LLMSettings: Codable {
         try container.encode(activeProvider, forKey: .activeProvider)
         var raw: [String: ProviderDTO] = [:]
         for (provider, value) in providers {
-            raw[provider.rawValue] = ProviderDTO(key: value.key, model: value.model, baseURL: value.baseURL)
+            raw[provider.rawValue] = ProviderDTO(
+                key: value.key,
+                model: value.model,
+                baseURL: value.baseURL,
+                thinkingEnabled: value.thinkingEnabled
+            )
         }
         try container.encode(raw, forKey: .providers)
     }

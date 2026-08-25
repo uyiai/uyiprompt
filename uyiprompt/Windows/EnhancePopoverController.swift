@@ -14,6 +14,8 @@ struct PopoverContentState: Equatable {
     var originalText: String
     var enhancedText: String
     var error: String
+    var job: SelectionJob = .enhance
+    var translateLanguage: TranslateLanguage = .auto
 }
 
 @MainActor
@@ -64,9 +66,10 @@ final class EnhancePopoverController {
     func show(state: PopoverContentState, near point: NSPoint) {
         model.state = state
         let window = ensureWindow()
+        let readyHeight: CGFloat = state.job == .translate ? 300 : 240
         let height: CGFloat = state.status == .loading ? WindowMetrics.popoverDefault.height : min(
             WindowMetrics.popoverMax.height,
-            max(WindowMetrics.popoverDefault.height, 240)
+            max(WindowMetrics.popoverDefault.height, readyHeight)
         )
         window.setFrame(
             Self.clampedFrame(anchor: point, size: CGSize(width: WindowMetrics.popoverDefault.width, height: height)),
@@ -92,10 +95,12 @@ final class EnhancePopoverController {
                 onReplace: { [weak windows] in windows?.coordinator.replace() },
                 onCopy: { [weak windows] in windows?.coordinator.copyResult() },
                 onRetry: { [weak windows] in windows?.coordinator.retry() },
-                onSwitchProfile: { [weak windows] id in windows?.coordinator.switchProfile(id) }
+                onSwitchProfile: { [weak windows] id in windows?.coordinator.switchProfile(id) },
+                onSwitchLanguage: { [weak windows] language in windows?.coordinator.switchTranslateLanguage(language) }
             )
             .environmentObject(session)
             .environmentObject(windows),
+            material: .hudWindow,
             cornerRadius: WindowMetrics.windowCorner
         )
         panel = created

@@ -18,7 +18,7 @@ final class StatusItemController: NSObject {
             image?.isTemplate = true
             button.image = image?.withSymbolConfiguration(.init(pointSize: 14, weight: .semibold))
             button.image?.isTemplate = true
-            button.toolTip = "uyiprompt · 选中文字后按 ⌘⇧E 改写"
+            button.toolTip = "uyiprompt · ⌘⇧E 改写 · ⌘⇧T 翻译"
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.target = self
             button.action = #selector(statusItemClicked(_:))
@@ -29,13 +29,13 @@ final class StatusItemController: NSObject {
 
     @objc private func statusItemClicked(_ sender: Any?) {
         guard let event = NSApp.currentEvent else {
-            windows?.togglePanel()
+            windows?.showSettings(page: .providers)
             return
         }
         if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
             showMenu()
         } else {
-            windows?.togglePanel()
+            windows?.showSettings(page: .providers)
         }
     }
 
@@ -52,6 +52,8 @@ final class StatusItemController: NSObject {
             menu.addItem(.separator())
         }
         menu.addItem(Self.item("打开面板", action: #selector(openPanel), target: self, symbol: "macwindow"))
+        menu.addItem(Self.item("改写选中文字", action: #selector(enhanceSelection), target: self, symbol: "character.cursor.ibeam"))
+        menu.addItem(Self.item("翻译选中文字", action: #selector(translateSelection), target: self, symbol: "globe"))
         menu.addItem(Self.item("模型服务", action: #selector(openProviders), target: self, symbol: "cpu"))
         menu.addItem(Self.item("设置…", action: #selector(openSettings), target: self, symbol: "gearshape", key: ","))
         menu.addItem(Self.item("使用说明", action: #selector(openOnboarding), target: self, symbol: "questionmark.circle"))
@@ -99,12 +101,13 @@ final class StatusItemController: NSObject {
     }
 
     @objc private func openPanel() { windows?.showPanel() }
+    @objc private func enhanceSelection() { windows?.enhanceSelection() }
+    @objc private func translateSelection() { windows?.translateSelection() }
     @objc private func openSettings() { windows?.showSettings(page: .general) }
     @objc private func openProviders() { windows?.showSettings(page: .providers) }
     @objc private func openOnboarding() { windows?.showOnboarding() }
     @objc private func openAccessibility() {
-        SelectionService.promptForAccessibility()
-        SelectionService.openAccessibilitySettings()
+        SelectionService.requestAccess()
     }
     @objc private func selectProfile(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }

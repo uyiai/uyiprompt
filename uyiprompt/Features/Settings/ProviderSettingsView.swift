@@ -4,24 +4,26 @@ import SwiftUI
 struct ProviderSettingsView: View {
     @EnvironmentObject private var session: AppSession
     @Binding var editing: LLMProvider
+    @State private var hovered: LLMProvider?
 
     var body: some View {
         HStack(spacing: 0) {
             providerList
-                .frame(width: 248)
-            Divider().opacity(0.3)
+                .frame(width: 252)
+            Divider().opacity(0.28)
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
     private var providerList: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("服务商")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
-                .padding(.top, 8)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
 
             ForEach(LLMProvider.allCases) { provider in
                 providerRow(provider)
@@ -30,20 +32,21 @@ struct ProviderSettingsView: View {
         }
         .padding(.horizontal, 8)
         .padding(.bottom, 12)
-        .background(Color.primary.opacity(0.025))
+        .background(UIChrome.sidebarFill)
     }
 
     private func providerRow(_ provider: LLMProvider) -> some View {
         let selected = editing == provider
         let active = session.llm.activeProvider == provider
         let configured = session.llm.isConfigured(provider)
+        let highlight = selected || hovered == provider
 
         return HStack(spacing: 4) {
             Button {
                 editing = provider
             } label: {
                 HStack(spacing: 10) {
-                    ProviderIcon(provider: provider, size: 32)
+                    ProviderIcon(provider: provider, size: 30)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             Text(provider.title)
@@ -76,31 +79,29 @@ struct ProviderSettingsView: View {
                 Image(systemName: active ? "checkmark.circle.fill" : "circle")
                     .font(.body)
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(active ? Color.green : Color.secondary.opacity(0.6))
+                    .foregroundStyle(active ? Color.green : Color.secondary.opacity(0.45))
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(active ? "当前使用" : "设为当前服务")
-            .accessibilityLabel(active ? "当前使用 \(provider.title)" : "设 \(provider.title) 为当前")
-            .opacity(active || configured ? 1 : 0.7)
+            .opacity(active || configured || highlight ? 1 : 0.55)
         }
         .padding(.leading, 10)
         .padding(.trailing, 6)
         .padding(.vertical, 8)
         .background(
-            selected ? Color.primary.opacity(0.08) : Color.clear,
+            selected ? Color.primary.opacity(0.09) : (hovered == provider ? Color.primary.opacity(0.04) : Color.clear),
             in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(selected ? Color.primary.opacity(0.06) : Color.clear, lineWidth: 1)
-        )
+        .onHover { inside in
+            hovered = inside ? provider : (hovered == provider ? nil : hovered)
+        }
     }
 
     private var detail: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .center, spacing: 12) {
                     ProviderIcon(provider: editing, size: 40)
                     VStack(alignment: .leading, spacing: 3) {
@@ -112,9 +113,7 @@ struct ProviderSettingsView: View {
                     }
                     Spacer()
                     if session.llm.activeProvider == editing {
-                        Label("当前使用", systemImage: "checkmark.circle.fill")
-                            .font(.callout.weight(.medium))
-                            .foregroundStyle(Color.green)
+                        StatusPill(text: "当前使用", tint: .green, symbol: "checkmark.circle.fill")
                     } else {
                         Button {
                             setActive(editing)
@@ -125,10 +124,13 @@ struct ProviderSettingsView: View {
                         .controlSize(.small)
                     }
                 }
+                .padding(.bottom, 16)
 
-                ModelSetupCard(provider: editing)
+                ModelSetupCard(provider: editing, showsStatus: false, embedded: true)
             }
-            .padding(24)
+            .padding(22)
+            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

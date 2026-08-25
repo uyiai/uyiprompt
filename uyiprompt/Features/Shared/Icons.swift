@@ -1,5 +1,72 @@
 import SwiftUI
 
+enum UIChrome {
+    static let radius: CGFloat = 12
+    static let radiusSmall: CGFloat = 8
+    static let cardFill = Color.primary.opacity(0.045)
+    static let cardStroke = Color.primary.opacity(0.06)
+    static let sidebarFill = Color.primary.opacity(0.035)
+}
+
+struct SurfaceCard<Content: View>: View {
+    var padding: CGFloat = 16
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
+                    .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
+            )
+    }
+}
+
+struct IconButton: View {
+    let symbol: String
+    var help: String = ""
+    var active: Bool = false
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(active ? Color.accentColor : Color.secondary)
+                .frame(width: 26, height: 26)
+                .background(
+                    Color.primary.opacity(active ? 0.08 : 0.05),
+                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+}
+
+struct StatusPill: View {
+    let text: String
+    var tint: Color = .green
+    var symbol: String? = nil
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let symbol {
+                Image(systemName: symbol)
+            }
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(tint.opacity(0.12), in: Capsule())
+    }
+}
+
 /// App glyph used in settings, onboarding, and the panel header.
 struct AppMark: View {
     var size: CGFloat = 28

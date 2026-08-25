@@ -19,22 +19,44 @@ struct SetupBanner: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: UIChrome.radiusSmall, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: UIChrome.radiusSmall, style: .continuous)
+                .strokeBorder(Color.orange.opacity(0.18), lineWidth: 1)
+        )
+    }
+}
+
+struct ShortcutChip: View {
+    let text: String
+    var help: String = ""
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.medium).monospaced())
+            .foregroundStyle(.tertiary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.primary.opacity(0.05), in: Capsule())
+            .help(help)
     }
 }
 
 struct HowToStrip: View {
+    var shortcut: String = "⌘⇧E"
+    var action: String = "点「替换」"
+
     var body: some View {
         HStack(spacing: 10) {
             HowToStep(symbol: "character.cursor.ibeam", title: "选中文字")
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-            HowToStep(symbol: "keyboard", title: "按 ⌘⇧E")
+            HowToStep(symbol: "keyboard", title: "按 \(shortcut)")
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-            HowToStep(symbol: "arrow.uturn.forward", title: "点「替换」")
+            HowToStep(symbol: "arrow.uturn.forward", title: action)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,7 +103,7 @@ struct CapsuleChooser<Value: Hashable>: View {
                             selection == value ? Color.accentColor : Color.clear,
                             in: Capsule()
                         )
-                        .foregroundStyle(selection == value ? Color.white : Color.primary)
+                        .foregroundStyle(selection == value ? Color.white : Color.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -96,13 +118,18 @@ struct KeyCap: View {
 
     var body: some View {
         Text(text)
-            .font(.title2.weight(.semibold).monospaced())
-            .padding(.horizontal, 12)
+            .font(.title3.weight(.semibold).monospaced())
+            .frame(minWidth: 36)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
+                    .shadow(color: Color.black.opacity(0.12), radius: 0, y: 2)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
             )
     }
 }
@@ -114,7 +141,7 @@ struct MenuBarHintView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("已经放到菜单栏")
                     .font(.headline)
-                Text("选中文字后按 ⌘⇧E 即可改写")
+                Text("⌘⇧E 改写 · ⌘⇧T 翻译")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

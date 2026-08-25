@@ -62,6 +62,7 @@ final class AppSession: ObservableObject {
     @Published var currentProfileID = WritingProfile.builtins[0].id { didSet { persistSoon() } }
     @Published var llm = LLMSettings.empty { didSet { persistSoon() } }
     @Published var enhanceLanguage: EnhanceLanguage = .auto { didSet { persistSoon() } }
+    @Published var translateLanguage: TranslateLanguage = .auto { didSet { persistSoon() } }
     @Published var appProfileRules: [String: String] = [:] { didSet { persistSoon() } }
     private var isLoading = true
 
@@ -126,6 +127,15 @@ final class AppSession: ObservableObject {
         load()
         isLoading = false
         migrateBuiltinNames()
+        migrateRetiredModels()
+    }
+
+    private func migrateRetiredModels() {
+        var next = llm
+        next.migrateRetiredModels()
+        if next != llm {
+            llm = next
+        }
     }
 
     private func migrateBuiltinNames() {
@@ -133,16 +143,29 @@ final class AppSession: ObservableObject {
         var changed = false
         let next = profiles.map { profile -> WritingProfile in
             guard profile.builtin, let updated = fresh[profile.id] else { return profile }
-            let stale = WritingProfile.previousNames[profile.id] ?? []
-            guard stale.contains(profile.name) else { return profile }
-            changed = true
             var copy = profile
-            copy.name = updated.name
+            let stale = WritingProfile.previousNames[profile.id] ?? []
+            if stale.contains(profile.name) {
+                copy.name = updated.name
+                changed = true
+            }
+            if looksEnglish(profile.systemPrompt), copy.systemPrompt != updated.systemPrompt {
+                copy.systemPrompt = updated.systemPrompt
+                changed = true
+            }
             return copy
         }
         if changed {
             profiles = next
         }
+    }
+
+    private func looksEnglish(_ text: String) -> Bool {
+        let sample = text.prefix(80)
+        let letters = sample.filter(\.isLetter)
+        guard !letters.isEmpty else { return false }
+        let ascii = letters.filter(\.isASCII)
+        return Double(ascii.count) / Double(letters.count) > 0.85
     }
 
     func saveNow() {
@@ -171,6 +194,7 @@ final class AppSession: ObservableObject {
         var currentProfileID: String
         var llm: LLMSettings
         var enhanceLanguage: EnhanceLanguage?
+        var translateLanguage: TranslateLanguage?
         var appProfileRules: [String: String]?
     }
 
@@ -189,6 +213,7 @@ final class AppSession: ObservableObject {
         currentProfileID = snapshot.currentProfileID
         llm = snapshot.llm
         enhanceLanguage = snapshot.enhanceLanguage ?? .auto
+        translateLanguage = snapshot.translateLanguage ?? .auto
         appProfileRules = snapshot.appProfileRules ?? [:]
     }
 
@@ -204,6 +229,7 @@ final class AppSession: ObservableObject {
             currentProfileID: currentProfileID,
             llm: llm,
             enhanceLanguage: enhanceLanguage,
+            translateLanguage: translateLanguage,
             appProfileRules: appProfileRules
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }

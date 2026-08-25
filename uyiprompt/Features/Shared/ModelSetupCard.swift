@@ -6,6 +6,8 @@ struct ModelSetupCard: View {
     let provider: LLMProvider
     var compact: Bool = false
     var showProviderPicker: Bool = false
+    var showsStatus: Bool = true
+    var embedded: Bool = false
 
     @State private var revealKey = false
     @State private var testing = false
@@ -14,46 +16,28 @@ struct ModelSetupCard: View {
 
     private var endpoint: LLMProviderSettings { session.llm.endpoint(provider) }
     private var thisReady: Bool { session.llm.isConfigured(provider) }
+    private var showModelField: Bool {
+        provider.suggestedModels.isEmpty || (!compact && !provider.suggestedModels.contains(endpoint.model) && !endpoint.model.isEmpty)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let content = VStack(alignment: .leading, spacing: 14) {
             if showProviderPicker {
                 providerPicker
             }
 
-            if testOK {
-                Label("连接成功，可以用了", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(Color.green)
-                    .font(.callout.weight(.medium))
-            } else if thisReady {
-                Label("\(provider.title) · \(endpoint.model)", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(Color.green)
-                    .font(.callout.weight(.medium))
-            } else {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "key.fill")
-                        .foregroundStyle(provider.accent)
-                    Text(provider.helpText)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+            if showsStatus {
+                statusRow
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("API Key")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    if let url = provider.signupURL {
-                        Button("去申请密钥") {
-                            NSWorkspace.shared.open(url)
-                        }
+            field("API Key") {
+                if let url = provider.signupURL {
+                    Button("去申请密钥") { NSWorkspace.shared.open(url) }
                         .buttonStyle(.borderless)
                         .font(.caption.weight(.semibold))
-                    }
                 }
-                HStack {
+            } content: {
+                HStack(spacing: 8) {
                     Group {
                         if revealKey {
                             TextField(provider.keyPlaceholder, text: keyBinding)
@@ -62,29 +46,43 @@ struct ModelSetupCard: View {
                         }
                     }
                     .textFieldStyle(.roundedBorder)
-                    Button(revealKey ? "隐藏" : "显示") { revealKey.toggle() }
-                        .buttonStyle(.borderless)
+                    Button {
+                        revealKey.toggle()
+                    } label: {
+                        Image(systemName: revealKey ? "eye.slash" : "eye")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20)
+                    }
+                    .buttonStyle(.plain)
+                    .help(revealKey ? "隐藏密钥" : "显示密钥")
                 }
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("模型")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+            field("模型") {
+                EmptyView()
+            } content: {
                 if !provider.suggestedModels.isEmpty {
                     CapsuleChooser(options: modelOptions, selection: modelBinding)
                 }
-                if !compact || provider.suggestedModels.isEmpty {
+                if showModelField {
                     TextField("模型名，可手填", text: modelBinding)
                         .textFieldStyle(.roundedBorder)
                 }
             }
 
-            if provider == .custom {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("接口地址")
-                        .font(.caption.weight(.semibold))
+            if provider.supportsThinkingToggle {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("打开思考", isOn: thinkingBinding)
+                    Text("改写一般不用开，更快更省。编程、长文、难改时再开。")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if provider == .custom {
+                field("接口地址") {
+                    EmptyView()
+                } content: {
                     TextField("https://api.example.com/v1", text: baseURLBinding)
                         .textFieldStyle(.roundedBorder)
                     Text("使用 OpenAI 兼容的 /v1/chat/completions。")
@@ -95,6 +93,7 @@ struct ModelSetupCard: View {
                 DisclosureGroup("高级：接口地址") {
                     TextField(provider.defaultBaseURL, text: baseURLBinding)
                         .textFieldStyle(.roundedBorder)
+                        .padding(.top, 6)
                     Text("一般不用改。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -106,28 +105,78 @@ struct ModelSetupCard: View {
                     test()
                 } label: {
                     if testing {
-                        ProgressView()
-                            .controlSize(.small)
+                        ProgressView().controlSize(.small)
                     } else {
-                        Label("测试连接", systemImage: "network")
+                        Label("测试连接", systemImage: "bolt.horizontal")
                     }
                 }
+                .buttonStyle(.bordered)
                 .disabled(testing)
 
                 if !testMessage.isEmpty {
                     Text(testMessage)
                         .font(.callout)
                         .foregroundStyle(testOK ? Color.green : Color.red)
-                        .lineLimit(3)
+                        .lineLimit(2)
                 }
             }
         }
-        .padding(compact ? 12 : 16)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+        Group {
+            if embedded {
+                content
+            } else {
+                content
+                    .padding(compact ? 12 : 16)
+                    .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
+                            .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
+                    )
+            }
+        }
         .onChange(of: provider) { _, _ in
             testMessage = ""
             testOK = false
             revealKey = false
+        }
+    }
+
+    @ViewBuilder
+    private var statusRow: some View {
+        if testOK {
+            Label("连接成功，可以用了", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(Color.green)
+                .font(.callout.weight(.medium))
+        } else if thisReady {
+            Label("\(provider.title) · \(endpoint.model)", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(Color.green)
+                .font(.callout.weight(.medium))
+        } else {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "key.fill")
+                    .foregroundStyle(provider.accent)
+                Text(provider.helpText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func field<Trailing: View, Content: View>(
+        _ title: String,
+        @ViewBuilder trailing: () -> Trailing,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                trailing()
+            }
+            content()
         }
     }
 
@@ -153,7 +202,7 @@ struct ModelSetupCard: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .strokeBorder(
-                                session.llm.activeProvider == item ? Color.accentColor.opacity(0.45) : Color.clear,
+                                session.llm.activeProvider == item ? Color.accentColor.opacity(0.4) : Color.clear,
                                 lineWidth: 1
                             )
                     )
@@ -163,19 +212,8 @@ struct ModelSetupCard: View {
         }
     }
 
-    private func friendlyModelName(_ name: String) -> String {
-        switch name {
-        case "deepseek-chat": "对话"
-        case "deepseek-reasoner": "推理"
-        case "moonshot-v1-8k": "8K"
-        case "moonshot-v1-32k": "32K"
-        case "moonshot-v1-128k": "128K"
-        default: name
-        }
-    }
-
     private var modelOptions: [(String, String)] {
-        var items = provider.suggestedModels.map { ($0, friendlyModelName($0)) }
+        var items = provider.suggestedModels.map { ($0, provider.displayName(for: $0)) }
         let current = endpoint.model
         if !current.isEmpty, !provider.suggestedModels.contains(current) {
             items.append((current, current))
@@ -234,6 +272,13 @@ struct ModelSetupCard: View {
         )
     }
 
+    private var thinkingBinding: Binding<Bool> {
+        Binding(
+            get: { endpoint.thinkingEnabled },
+            set: { newValue in update { $0.thinkingEnabled = newValue } }
+        )
+    }
+
     private func test() {
         testing = true
         testMessage = ""
@@ -242,7 +287,7 @@ struct ModelSetupCard: View {
         Task {
             defer { testing = false }
             do {
-                _ = try await EnhanceService.testConnection(endpoint: target)
+                _ = try await EnhanceService.testConnection(endpoint: target, provider: provider)
                 testOK = true
                 testMessage = "连接成功，可以用了"
                 if session.llm.activeProvider != provider {

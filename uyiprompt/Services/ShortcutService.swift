@@ -16,6 +16,7 @@ final class ShortcutService: @unchecked Sendable {
         self.windows = windows
         register(keyCode: UInt32(kVK_ANSI_U), actionID: 1)
         register(keyCode: UInt32(kVK_ANSI_E), actionID: 2)
+        register(keyCode: UInt32(kVK_ANSI_T), actionID: 3)
         installHandler()
     }
 
@@ -70,6 +71,7 @@ final class ShortcutService: @unchecked Sendable {
         switch id {
         case 1: windows?.togglePanel()
         case 2: windows?.enhanceSelection()
+        case 3: windows?.translateSelection()
         default: break
         }
     }

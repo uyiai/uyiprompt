@@ -6,27 +6,22 @@ import SwiftUI
 /// same AppKit view.
 @MainActor
 final class GlassHostingController<Content: View>: NSViewController {
-    private let visualEffectView = NSVisualEffectView()
-    private let hostingController: NSHostingController<Content>
+    private let rootView: Content
+    private let material: NSVisualEffectView.Material
+    private let emphasized: Bool
+    private let cornerRadius: CGFloat
 
     init(
         rootView: Content,
-        material: NSVisualEffectView.Material = .underWindowBackground,
+        material: NSVisualEffectView.Material = .hudWindow,
         emphasized: Bool = true,
         cornerRadius: CGFloat = 0
     ) {
-        hostingController = NSHostingController(rootView: rootView)
-        hostingController.sizingOptions = []
+        self.rootView = rootView
+        self.material = material
+        self.emphasized = emphasized
+        self.cornerRadius = cornerRadius
         super.init(nibName: nil, bundle: nil)
-        visualEffectView.material = material
-        visualEffectView.blendingMode = .behindWindow
-        visualEffectView.state = emphasized ? .active : .followsWindowActiveState
-        visualEffectView.isEmphasized = emphasized
-        if cornerRadius > 0 {
-            visualEffectView.wantsLayer = true
-            visualEffectView.layer?.cornerRadius = cornerRadius
-            visualEffectView.layer?.masksToBounds = true
-        }
     }
 
     @available(*, unavailable)
@@ -35,12 +30,19 @@ final class GlassHostingController<Content: View>: NSViewController {
     }
 
     override func loadView() {
-        view = visualEffectView
-        addChild(hostingController)
-        let hosted = hostingController.view
+        let visualEffectView = NSVisualEffectView()
+        visualEffectView.material = material
+        visualEffectView.blendingMode = .withinWindow
+        visualEffectView.state = emphasized ? .active : .followsWindowActiveState
+        visualEffectView.isEmphasized = emphasized
+        if cornerRadius > 0 {
+            visualEffectView.wantsLayer = true
+            visualEffectView.layer?.cornerRadius = cornerRadius
+            visualEffectView.layer?.masksToBounds = true
+        }
+        let hosted = NSHostingView(rootView: rootView)
+        hosted.sizingOptions = []
         hosted.translatesAutoresizingMaskIntoConstraints = false
-        hosted.wantsLayer = true
-        hosted.layer?.backgroundColor = NSColor.clear.cgColor
         visualEffectView.addSubview(hosted)
         NSLayoutConstraint.activate([
             hosted.leadingAnchor.constraint(equalTo: visualEffectView.leadingAnchor),
@@ -48,6 +50,7 @@ final class GlassHostingController<Content: View>: NSViewController {
             hosted.topAnchor.constraint(equalTo: visualEffectView.topAnchor),
             hosted.bottomAnchor.constraint(equalTo: visualEffectView.bottomAnchor),
         ])
+        view = visualEffectView
     }
 }
 
@@ -62,14 +65,17 @@ enum ProductWindowFactory {
             defer: false
         )
         configureGlass(panel)
+        panel.title = "uyiprompt"
+        panel.identifier = NSUserInterfaceItemIdentifier("uyiprompt.panel")
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = false
         panel.level = .statusBar
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isMovableByWindowBackground = true
         panel.hidesOnDeactivate = false
         panel.hasShadow = true
         panel.minSize = WindowMetrics.panelMinSize
+        panel.orderOut(nil)
         return panel
     }
 
@@ -82,6 +88,7 @@ enum ProductWindowFactory {
             defer: false
         )
         configureGlass(panel)
+        panel.identifier = NSUserInterfaceItemIdentifier("uyiprompt.popover")
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = true
         panel.level = .popUpMenu
@@ -103,11 +110,13 @@ enum ProductWindowFactory {
         )
         configureGlass(window)
         window.title = "设置"
+        window.identifier = NSUserInterfaceItemIdentifier("uyiprompt.settings")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.minSize = CGSize(width: 900, height: 620)
         window.toolbarStyle = .unified
+        window.level = .floating
         return window
     }
 
@@ -120,6 +129,7 @@ enum ProductWindowFactory {
             defer: false
         )
         window.title = "欢迎"
+        window.identifier = NSUserInterfaceItemIdentifier("uyiprompt.onboarding")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
@@ -127,50 +137,65 @@ enum ProductWindowFactory {
         window.isOpaque = true
         window.hasShadow = true
         window.isReleasedWhenClosed = false
+        window.isRestorable = false
+        window.level = .floating
         return window
     }
 
     private static func configureGlass(_ window: NSWindow) {
         window.isOpaque = false
-        window.backgroundColor = .clear
+        window.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.78)
         window.hasShadow = true
         window.isReleasedWhenClosed = false
+        window.isRestorable = false
+    }
+
+    static func screenForPlacement(near point: NSPoint? = nil) -> NSScreen {
+        if let point, let matched = NSScreen.screens.first(where: { $0.frame.contains(point) }) {
+            return matched
+        }
+        if let statusScreen = NSApp.windows.first(where: { $0.className.contains("StatusBar") })?.screen {
+            return statusScreen
+        }
+        if let builtIn = NSScreen.screens.first(where: { $0.frame.minX == 0 && $0.frame.minY == 0 }) {
+            return builtIn
+        }
+        return NSScreen.main ?? NSScreen.screens[0]
+    }
+
+    static func visibleFrame(on screen: NSScreen? = nil) -> NSRect {
+        (screen ?? screenForPlacement()).visibleFrame
+    }
+
+    static func clampedFrame(_ size: CGSize, on screen: NSScreen? = nil) -> NSRect {
+        let work = visibleFrame(on: screen)
+        let width = min(max(size.width, 360), max(360, work.width - 24))
+        let height = min(max(size.height, 240), max(240, work.height - 24))
+        let x = work.midX - width / 2
+        let y = work.midY - height / 2
+        return NSRect(
+            x: min(max(x, work.minX + 12), work.maxX - width - 12),
+            y: min(max(y, work.minY + 12), work.maxY - height - 12),
+            width: width,
+            height: height
+        )
     }
 
     static func centerOnMainScreen(_ window: NSWindow, size: CGSize? = nil) {
-        let target = size ?? window.frame.size
-        let width = max(target.width, 360)
-        let height = max(target.height, 240)
-        let work = NSScreen.screens.first(where: { $0.frame.origin == .zero })?.visibleFrame
-            ?? NSScreen.main?.visibleFrame
-            ?? NSRect(x: 80, y: 80, width: 1200, height: 800)
-        let x = work.midX - width / 2
-        let y = work.midY - height / 2
-        window.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
+        window.setFrame(clampedFrame(size ?? window.frame.size), display: true)
     }
 
-    static func present(_ window: NSWindow, size: CGSize? = nil) {
-        centerOnMainScreen(window, size: size)
-        window.collectionBehavior.insert(.moveToActiveSpace)
-        window.level = .floating
+    static func frameIntersectsAnyScreen(_ frame: NSRect) -> Bool {
+        NSScreen.screens.contains { $0.visibleFrame.intersects(frame.insetBy(dx: 8, dy: 8)) }
+    }
+
+    static func present(_ window: NSWindow, size: CGSize? = nil, on screen: NSScreen? = nil) {
+        window.setFrame(clampedFrame(size ?? window.frame.size, on: screen), display: true)
         window.isReleasedWhenClosed = false
         window.hidesOnDeactivate = false
         NSApp.activate()
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
-        let line = "[uyiprompt] present frame=\(NSStringFromRect(window.frame)) visible=\(window.isVisible) vc=\(String(describing: window.contentViewController))"
-        NSLog("%@", line)
-        if let data = (line + "\n").data(using: .utf8) {
-            let url = URL(fileURLWithPath: "/tmp/uyiprompt-debug.log")
-            if FileManager.default.fileExists(atPath: url.path) {
-                if let handle = try? FileHandle(forWritingTo: url) {
-                    try? handle.seekToEnd()
-                    try? handle.write(contentsOf: data)
-                    try? handle.close()
-                }
-            } else {
-                try? data.write(to: url)
-            }
-        }
+        NSLog("[uyiprompt] present frame=%@ visible=%@", NSStringFromRect(window.frame), window.isVisible ? "yes" : "no")
     }
 }

@@ -21,13 +21,10 @@ final class PanelWindowController {
 
     func show() {
         let window = ensureWindow()
-        if placed {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
-        } else {
-            ProductWindowFactory.present(window, size: WindowMetrics.panelSize)
-            placed = true
-        }
+        window.setPinnedBehavior(session?.panelPinned ?? true)
+        ProductWindowFactory.present(window, size: WindowMetrics.panelSize)
+        window.setPinnedBehavior(session?.panelPinned ?? true)
+        placed = true
     }
 
     func hide() {
@@ -47,7 +44,11 @@ final class PanelWindowController {
         let root = PanelView()
             .environmentObject(session)
             .environmentObject(windows)
-        created.contentViewController = GlassHostingController(rootView: root, cornerRadius: WindowMetrics.windowCorner)
+        created.contentViewController = GlassHostingController(
+            rootView: root,
+            material: .hudWindow,
+            cornerRadius: WindowMetrics.windowCorner
+        )
         created.setPinnedBehavior(session.panelPinned)
         panel = created
         return created

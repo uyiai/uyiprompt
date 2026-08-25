@@ -9,7 +9,7 @@ final class MenuBarHintController {
 
     func show(from button: NSStatusBarButton) {
         hide()
-        let size = CGSize(width: 300, height: 72)
+        let size = CGSize(width: 320, height: 72)
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],

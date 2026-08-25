@@ -20,9 +20,8 @@ struct SelectionPasteResult {
 @MainActor
 enum SelectionService {
     static let ownBundleIDs: Set<String> = ["app.uyiprompt"]
-    static let accessibilityPrefsURL = URL(
-        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-    )!
+    static let accessDeniedMessage =
+        "辅助功能开关对不上当前这份程序。请到系统设置 → 隐私与安全性 → 辅助功能：删掉旧的 uyiprompt，再把「应用程序」里的 uyiprompt 拖进去打开。"
 
     static var isTrusted: Bool {
         AXIsProcessTrusted()
@@ -34,7 +33,18 @@ enum SelectionService {
     }
 
     static func openAccessibilitySettings() {
-        NSWorkspace.shared.open(accessibilityPrefsURL)
+        let urls = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        ]
+        for raw in urls {
+            if let url = URL(string: raw), NSWorkspace.shared.open(url) { return }
+        }
+    }
+
+    static func requestAccess() {
+        promptForAccessibility()
+        openAccessibilitySettings()
     }
 
     static func frontmostBundleID() -> String? {
@@ -96,7 +106,7 @@ enum SelectionService {
 
     static func paste(_ text: String, into bundleID: String?) async -> SelectionPasteResult {
         if !isTrusted {
-            return SelectionPasteResult(ok: false, accessibilityDenied: true, error: "还没有开启辅助功能")
+            return SelectionPasteResult(ok: false, accessibilityDenied: true, error: accessDeniedMessage)
         }
         if let bundleID {
             _ = activate(bundleID: bundleID)

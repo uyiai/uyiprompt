@@ -1,6 +1,6 @@
 # uyiprompt
 
-macOS 菜单栏改写工具。选中文字后按 ⌘⇧E，改完点「替换原文」写回去。
+macOS 菜单栏改写 / 翻译工具。选中文字后按 ⌘⇧E 改写，或 ⌘⇧T 翻译，点「替换」写回去。
 
 窗口由 AppKit 托管，界面用 SwiftUI 绘制。读选区和粘贴走辅助功能 + 合成 ⌘C / ⌘V。模型走 OpenAI 兼容的 `/v1/chat/completions`，密钥只存在本机。
 
@@ -26,8 +26,8 @@ xcodebuild -project uyiprompt.xcodeproj -scheme uyiprompt \
 
 1. 打开应用，走完三步引导（快捷键、辅助功能、连接模型）。
 2. 设置 → **模型服务**：选 DeepSeek / OpenAI / Kimi / 自定义，粘贴 API Key，点「测试连接」。
-3. 在微信、浏览器、编辑器里选中文字，按 **⌘⇧E**。
-4. 在浮层里点「替换原文」或「复制」。**⌘⇧U** 开关草稿面板。
+3. 在微信、浏览器、编辑器里选中文字，按 **⌘⇧E** 改写，或 **⌘⇧T** 翻译（默认中英互译）。
+4. 在浮层里点「替换」或「复制」。**⌘⇧U** 开关草稿面板。目标语言在设置 → 通用，也可在浮层里临时更换。
 
 密钥写在 `~/Library/Application Support/uyiprompt/settings.json`（权限 0600），只发往你选的服务商。
 

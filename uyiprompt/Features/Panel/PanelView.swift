@@ -11,16 +11,21 @@ struct PanelView: View {
     @State private var mode: ResultViewMode = .edit
     @State private var copied = false
     @State private var accessibilityOn = SelectionService.isTrusted
+    @State private var panelJob: SelectionJob = .enhance
+
+    private var canRun: Bool {
+        !busy && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().opacity(0.35)
+            Divider().opacity(0.22)
             VStack(alignment: .leading, spacing: 10) {
                 if !session.llm.isReady {
                     SetupBanner(
                         icon: "key.fill",
-                        text: "还差 API Key，填上就能改写",
+                        text: "还差 API Key，填上就能改写和翻译",
                         actionTitle: "去填写"
                     ) {
                         windows.showSettings(page: .providers)
@@ -28,84 +33,57 @@ struct PanelView: View {
                 } else if !accessibilityOn {
                     SetupBanner(
                         icon: "accessibility",
-                        text: "还没开辅助功能，无法读选中文字",
+                        text: "辅助功能对不上当前程序，读不了选中文字",
                         actionTitle: "去开启"
                     ) {
-                        SelectionService.promptForAccessibility()
-                        SelectionService.openAccessibilitySettings()
+                        SelectionService.requestAccess()
                     }
                 }
 
                 HStack(spacing: 8) {
-                    Text("风格")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Picker("风格", selection: $session.currentProfileID) {
-                        ForEach(session.profiles) { profile in
-                            Label(profile.name, systemImage: profile.symbol).tag(profile.id)
+                    CapsuleChooser(
+                        options: [(SelectionJob.enhance, "改写"), (.translate, "翻译")],
+                        selection: $panelJob
+                    )
+                    .frame(width: 148)
+                    if panelJob == .enhance {
+                        Picker("风格", selection: $session.currentProfileID) {
+                            ForEach(session.profiles) { profile in
+                                Label(profile.name, systemImage: profile.symbol).tag(profile.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                    } else {
+                        Picker("译成", selection: $session.translateLanguage) {
+                            ForEach(TranslateLanguage.allCases) { language in
+                                Text(language.shortTitle).tag(language)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        if !draft.isEmpty {
+                            Text(TranslateLanguage.routeLabel(preference: session.translateLanguage, text: draft))
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
                     Spacer()
                 }
-
-                ZStack(alignment: .topLeading) {
-                    TextEditor(text: $draft)
-                        .font(.body)
-                        .scrollContentBackground(.hidden)
-                        .padding(6)
-                    if draft.isEmpty {
-                        Text("粘贴要改的文字，或在别的软件里选中后按 ⌘⇧E")
-                            .foregroundStyle(.tertiary)
-                            .padding(12)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .frame(minHeight: 88)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-                if !error.isEmpty {
-                    Text(error)
-                        .font(.callout)
-                        .foregroundStyle(Color.red)
-                    if error.contains("密钥") || error.contains("API Key") {
-                        Button("去填写密钥") { windows.showSettings(page: .providers) }
-                            .controlSize(.small)
-                    }
-                } else if !result.isEmpty {
-                    HStack {
-                        ResultViewToggle(mode: $mode)
-                        Spacer()
-                        Button(copied ? "已复制" : "复制") { copyResult() }
-                            .disabled(result.isEmpty)
-                    }
-                    ScrollView {
-                        if mode == .changes {
-                            ResultDiffView(original: draft, current: result)
-                        } else {
-                            Text(result)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    .frame(maxHeight: 140)
+                .onChange(of: panelJob) { _, _ in
+                    result = ""
+                    error = ""
+                    copied = false
                 }
 
-                HStack {
-                    Button("收起") { windows.hidePanel() }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                        .help("⌘⇧U")
-                    Spacer()
-                    Button(busy ? "正在改写…" : (result.isEmpty ? "改写" : "再改一次")) { enhance() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(busy || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
+                editor
+                resultBlock
+                footer
             }
-            .padding(14)
+            .padding(12)
         }
         .frame(minWidth: WindowMetrics.panelMinSize.width, minHeight: WindowMetrics.panelMinSize.height)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.28))
         .onAppear { accessibilityOn = SelectionService.isTrusted }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             accessibilityOn = SelectionService.isTrusted
@@ -118,45 +96,152 @@ struct PanelView: View {
             Text("uyiprompt")
                 .font(.headline)
             Spacer()
-            Text("⌘⇧E")
-                .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
-                .help("在别的软件里选中文字后按 ⌘⇧E")
-            Button {
-                session.panelPinned.toggle()
-                windows.applyPanelPin()
-            } label: {
-                Image(systemName: session.panelPinned ? "pin.fill" : "pin")
+            HStack(spacing: 4) {
+                ShortcutChip(text: "⌘⇧E", help: "选中文字后改写")
+                ShortcutChip(text: "⌘⇧T", help: "选中文字后翻译")
+                IconButton(symbol: session.panelPinned ? "pin.fill" : "pin", help: "始终置顶", active: session.panelPinned) {
+                    session.panelPinned.toggle()
+                    windows.applyPanelPin()
+                }
+                IconButton(symbol: "xmark", help: "收起") {
+                    windows.hidePanel()
+                }
             }
-            .buttonStyle(.plain)
-            .help("始终置顶")
-            Button {
-                windows.hidePanel()
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
-            .help("收起")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
     }
 
-    private func enhance() {
-        let profile = session.currentProfile
+    private var editor: some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: $draft)
+                .font(.body)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+            if draft.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(panelJob == .translate ? "粘贴要译的文字" : "粘贴要改的文字")
+                        .foregroundStyle(.secondary)
+                    Text(panelJob == .translate ? "或在别的软件里选中后按 ⌘⇧T" : "或在别的软件里选中后按 ⌘⇧E")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(14)
+                .allowsHitTesting(false)
+            }
+        }
+        .frame(minHeight: 96, maxHeight: result.isEmpty && error.isEmpty ? 220 : 120)
+        .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var resultBlock: some View {
+        if !error.isEmpty {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Color.red)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(error)
+                        .font(.callout)
+                        .foregroundStyle(Color.red)
+                    if error.contains("密钥") || error.contains("API Key") {
+                        Button("去填写密钥") { windows.showSettings(page: .providers) }
+                            .controlSize(.small)
+                    }
+                }
+            }
+        } else if !result.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    if panelJob == .enhance {
+                        ResultViewToggle(mode: $mode)
+                    } else {
+                        Text("译文")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(copied ? "已复制" : "复制") { copyResult() }
+                        .controlSize(.small)
+                }
+                ScrollView {
+                    Group {
+                        if panelJob == .translate {
+                            Text(result)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if mode == .changes {
+                            ResultDiffView(original: draft, current: result)
+                        } else {
+                            Text(result)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(8)
+                }
+                .frame(maxHeight: 128)
+                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+    }
+
+    private var footer: some View {
+        HStack {
+            Button("收起") { windows.hidePanel() }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("⌘⇧U")
+            Spacer()
+            Button(actionTitle) { run() }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canRun)
+                .opacity(canRun || busy ? 1 : 0.55)
+        }
+    }
+
+    private var actionTitle: String {
+        if busy {
+            return panelJob == .translate ? "正在翻译…" : "正在改写…"
+        }
+        if result.isEmpty {
+            return panelJob == .translate ? "翻译" : "改写"
+        }
+        return panelJob == .translate ? "再译一次" : "再改一次"
+    }
+
+    private func run() {
         let text = draft
         busy = true
         error = ""
-        mode = ResultViewMode.default(forProfileID: profile.id)
+        if panelJob == .enhance {
+            mode = ResultViewMode.default(forProfileID: session.currentProfile.id)
+        }
+        let profile = session.currentProfile
+        let language = session.translateLanguage
+        let job = panelJob
         Task {
             defer { busy = false }
             do {
-                result = try await EnhanceService.enhance(
-                    message: text,
-                    profilePrompt: profile.systemPrompt,
-                    settings: session.llm,
-                    language: session.enhanceLanguage
-                )
+                switch job {
+                case .enhance:
+                    result = try await EnhanceService.enhance(
+                        message: text,
+                        profilePrompt: profile.systemPrompt,
+                        settings: session.llm,
+                        language: session.enhanceLanguage
+                    )
+                case .translate:
+                    result = try await EnhanceService.translate(
+                        message: text,
+                        settings: session.llm,
+                        language: language
+                    )
+                }
             } catch {
                 self.error = error.localizedDescription
             }
@@ -175,5 +260,5 @@ struct PanelView: View {
     PanelView()
         .environmentObject(AppSession())
         .environmentObject(AppWindows())
-        .frame(width: 360, height: 420)
+        .frame(width: 380, height: 440)
 }

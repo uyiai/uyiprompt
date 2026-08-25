@@ -6,6 +6,8 @@ struct CaptureSession {
     var bundleID: String?
     var profileID: String
     var enhancedText: String
+    var job: SelectionJob
+    var translateLanguage: TranslateLanguage
 }
 
 /// Shortcut → capture → enhance → popover → replace.
@@ -24,6 +26,14 @@ final class EnhanceCoordinator {
     }
 
     func enhanceSelection() {
+        start(job: .enhance)
+    }
+
+    func translateSelection() {
+        start(job: .translate)
+    }
+
+    private func start(job: SelectionJob) {
         guard let session, let windows else { return }
         if windows.isOnboardingVisible {
             windows.showOnboarding()
@@ -33,7 +43,9 @@ final class EnhanceCoordinator {
             windows.showPopover(
                 state: .error(
                     EnhanceError.missingAPIKey.errorDescription ?? "还没有填 API Key",
-                    profile: session.currentProfile.name
+                    profile: job == .translate ? "翻译" : session.currentProfile.name,
+                    job: job,
+                    translateLanguage: session.translateLanguage
                 ),
                 near: NSEvent.mouseLocation
             )
@@ -46,21 +58,29 @@ final class EnhanceCoordinator {
         let anchor = NSEvent.mouseLocation
 
         task = Task { [weak self] in
-            await self?.run(generation: gen, session: session, windows: windows, anchor: anchor)
+            await self?.run(generation: gen, job: job, session: session, windows: windows, anchor: anchor)
         }
     }
 
     func retry() {
         guard let capture else { return }
-        runEnhance(on: capture, profileID: capture.profileID)
+        runWork(on: capture)
     }
 
     func switchProfile(_ profileID: String) {
-        guard var capture else { return }
+        guard var capture, capture.job == .enhance else { return }
         capture.profileID = profileID
         session?.currentProfileID = profileID
         self.capture = capture
-        runEnhance(on: capture, profileID: profileID)
+        runWork(on: capture)
+    }
+
+    func switchTranslateLanguage(_ language: TranslateLanguage) {
+        guard var capture, capture.job == .translate else { return }
+        capture.translateLanguage = language
+        session?.translateLanguage = language
+        self.capture = capture
+        runWork(on: capture)
     }
 
     func copyResult() {
@@ -79,28 +99,40 @@ final class EnhanceCoordinator {
             if result.accessibilityDenied {
                 windows?.showPopover(
                     state: .error(
-                        "还需要辅助功能才能把改写写回去。可以先点「复制」。",
-                        profile: session?.currentProfile.name ?? "语法"
+                        "还写不回去：辅助功能对不上当前程序。可以先点「复制」。",
+                        profile: label(for: capture),
+                        original: capture.originalText,
+                        job: capture.job,
+                        translateLanguage: capture.translateLanguage
                     ),
                     near: NSEvent.mouseLocation
                 )
-                SelectionService.promptForAccessibility()
+                SelectionService.requestAccess()
             } else if !result.ok {
                 windows?.showPopover(
-                    state: .error(result.error ?? "没能粘贴回去", profile: session?.currentProfile.name ?? "语法"),
+                    state: .error(
+                        result.error ?? "没能粘贴回去",
+                        profile: label(for: capture),
+                        original: capture.originalText,
+                        job: capture.job,
+                        translateLanguage: capture.translateLanguage
+                    ),
                     near: NSEvent.mouseLocation
                 )
             }
         }
     }
 
-    private func run(generation gen: Int, session: AppSession, windows: AppWindows, anchor: NSPoint) async {
+    private func run(generation gen: Int, job: SelectionJob, session: AppSession, windows: AppWindows, anchor: NSPoint) async {
+        let fallbackName = job == .translate ? "翻译" : session.currentProfile.name
         if !SelectionService.isTrusted {
             SelectionService.promptForAccessibility()
             windows.showPopover(
                 state: .error(
-                    "需要辅助功能才能读取选中的文字。请在系统设置 → 隐私与安全性 → 辅助功能里打开 uyiprompt。",
-                    profile: session.currentProfile.name
+                    SelectionService.accessDeniedMessage,
+                    profile: fallbackName,
+                    job: job,
+                    translateLanguage: session.translateLanguage
                 ),
                 near: anchor
             )
@@ -110,20 +142,10 @@ final class EnhanceCoordinator {
         let front = SelectionService.frontmostBundleID()
         if SelectionService.isOwnApp(front) {
             if let capture, !capture.originalText.isEmpty {
-                windows.showPopover(
-                    state: PopoverContentState(
-                        status: capture.enhancedText.isEmpty ? .ready : .ready,
-                        profileId: capture.profileID,
-                        profileName: session.currentProfile.name,
-                        originalText: capture.originalText,
-                        enhancedText: capture.enhancedText,
-                        error: ""
-                    ),
-                    near: anchor
-                )
+                windows.showPopover(state: state(from: capture, session: session, status: .ready), near: anchor)
             } else {
                 windows.showPopover(
-                    state: .error("请先在别的软件里选中文字", profile: session.currentProfile.name),
+                    state: .error("请先在别的软件里选中文字", profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
                     near: anchor
                 )
             }
@@ -137,8 +159,10 @@ final class EnhanceCoordinator {
             SelectionService.promptForAccessibility()
             windows.showPopover(
                 state: .error(
-                    "需要辅助功能才能读取选中的文字。请在系统设置 → 隐私与安全性 → 辅助功能里打开 uyiprompt。",
-                    profile: session.currentProfile.name
+                    SelectionService.accessDeniedMessage,
+                    profile: fallbackName,
+                    job: job,
+                    translateLanguage: session.translateLanguage
                 ),
                 near: anchor
             )
@@ -148,142 +172,167 @@ final class EnhanceCoordinator {
         let text = captured.text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty {
             windows.showPopover(
-                state: .error("没读到选中的文字，再选一次试试", profile: session.currentProfile.name),
+                state: .error("没读到选中的文字，再选一次试试", profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
                 near: anchor
             )
             return
         }
 
         let profile = session.profile(forBundleID: captured.bundleID)
-        session.currentProfileID = profile.id
-        let stored = CaptureSession(originalText: text, bundleID: captured.bundleID, profileID: profile.id, enhancedText: "")
+        if job == .enhance {
+            session.currentProfileID = profile.id
+        }
+        let stored = CaptureSession(
+            originalText: text,
+            bundleID: captured.bundleID,
+            profileID: profile.id,
+            enhancedText: "",
+            job: job,
+            translateLanguage: session.translateLanguage
+        )
         capture = stored
 
-        if !session.enhancePopoverEnabled {
-            await requestEnhance(generation: gen, session: session, windows: windows, capture: stored, profile: profile, anchor: anchor, silent: true)
+        if job == .enhance, !session.enhancePopoverEnabled {
+            await requestWork(generation: gen, session: session, windows: windows, capture: stored, anchor: anchor, silent: true)
             return
         }
 
-        if !session.autoEnhanceOnShortcut {
-            windows.showPopover(
-                state: PopoverContentState(
-                    status: .ready,
-                    profileId: profile.id,
-                    profileName: profile.name,
-                    originalText: text,
-                    enhancedText: "",
-                    error: ""
-                ),
-                near: anchor
-            )
+        if job == .enhance, !session.autoEnhanceOnShortcut {
+            windows.showPopover(state: state(from: stored, session: session, status: .ready), near: anchor)
             return
         }
 
-        windows.showPopover(
-            state: PopoverContentState(
-                status: .loading,
-                profileId: profile.id,
-                profileName: profile.name,
-                originalText: text,
-                enhancedText: "",
-                error: ""
-            ),
-            near: anchor
-        )
-        await requestEnhance(generation: gen, session: session, windows: windows, capture: stored, profile: profile, anchor: anchor, silent: false)
+        windows.showPopover(state: state(from: stored, session: session, status: .loading), near: anchor)
+        await requestWork(generation: gen, session: session, windows: windows, capture: stored, anchor: anchor, silent: false)
     }
 
-    private func runEnhance(on capture: CaptureSession, profileID: String) {
+    private func runWork(on capture: CaptureSession) {
         guard let session, let windows else { return }
         generation += 1
         let gen = generation
-        let profile = session.profiles.first(where: { $0.id == profileID }) ?? session.currentProfile
         var next = capture
-        next.profileID = profile.id
+        if next.job == .enhance {
+            let profile = session.profiles.first(where: { $0.id == next.profileID }) ?? session.currentProfile
+            next.profileID = profile.id
+        }
         next.enhancedText = ""
         self.capture = next
         let anchor = NSEvent.mouseLocation
-        windows.showPopover(
-            state: PopoverContentState(
-                status: .loading,
-                profileId: profile.id,
-                profileName: profile.name,
-                originalText: next.originalText,
-                enhancedText: "",
-                error: ""
-            ),
-            near: anchor
-        )
+        windows.showPopover(state: state(from: next, session: session, status: .loading), near: anchor)
         task?.cancel()
         task = Task { [weak self] in
-            await self?.requestEnhance(generation: gen, session: session, windows: windows, capture: next, profile: profile, anchor: anchor, silent: false)
+            await self?.requestWork(generation: gen, session: session, windows: windows, capture: next, anchor: anchor, silent: false)
         }
     }
 
-    private func requestEnhance(
+    private func requestWork(
         generation gen: Int,
         session: AppSession,
         windows: AppWindows,
         capture: CaptureSession,
-        profile: WritingProfile,
         anchor: NSPoint,
         silent: Bool
     ) async {
+        let profile = session.profiles.first(where: { $0.id == capture.profileID }) ?? session.currentProfile
         do {
-            let coding = profile.id == "code" ? CodingTarget.extraPrompt(for: capture.bundleID) : nil
-            let result = try await EnhanceService.enhance(
-                message: capture.originalText,
-                profilePrompt: profile.systemPrompt,
-                settings: session.llm,
-                language: session.enhanceLanguage,
-                codingTarget: coding
-            )
+            let result: String
+            switch capture.job {
+            case .enhance:
+                let coding = profile.id == "code" ? CodingTarget.extraPrompt(for: capture.bundleID) : nil
+                result = try await EnhanceService.enhance(
+                    message: capture.originalText,
+                    profilePrompt: profile.systemPrompt,
+                    settings: session.llm,
+                    language: session.enhanceLanguage,
+                    codingTarget: coding
+                )
+            case .translate:
+                result = try await EnhanceService.translate(
+                    message: capture.originalText,
+                    settings: session.llm,
+                    language: capture.translateLanguage
+                )
+            }
             guard gen == generation else { return }
             var stored = capture
             stored.enhancedText = result
-            stored.profileID = profile.id
             self.capture = stored
             if silent {
                 let paste = await SelectionService.paste(result, into: capture.bundleID)
                 if !paste.ok {
                     windows.showPopover(
-                        state: .error(paste.error ?? "没能粘贴回去", profile: profile.name, profileId: profile.id, original: capture.originalText),
+                        state: .error(
+                            paste.error ?? "没能粘贴回去",
+                            profile: label(for: stored, session: session),
+                            profileId: stored.profileID,
+                            original: stored.originalText,
+                            job: stored.job,
+                            translateLanguage: stored.translateLanguage
+                        ),
                         near: anchor
                     )
                 }
                 return
             }
-            windows.showPopover(
-                state: PopoverContentState(
-                    status: .ready,
-                    profileId: profile.id,
-                    profileName: profile.name,
-                    originalText: capture.originalText,
-                    enhancedText: result,
-                    error: ""
-                ),
-                near: anchor
-            )
+            windows.showPopover(state: state(from: stored, session: session, status: .ready), near: anchor)
         } catch {
             guard gen == generation else { return }
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             windows.showPopover(
-                state: .error(message, profile: profile.name, profileId: profile.id, original: capture.originalText),
+                state: .error(
+                    message,
+                    profile: label(for: capture, session: session),
+                    profileId: capture.profileID,
+                    original: capture.originalText,
+                    job: capture.job,
+                    translateLanguage: capture.translateLanguage
+                ),
                 near: anchor
             )
         }
     }
+
+    private func label(for capture: CaptureSession, session: AppSession? = nil) -> String {
+        if capture.job == .translate { return "翻译" }
+        let session = session ?? self.session
+        return session?.profiles.first(where: { $0.id == capture.profileID })?.name
+            ?? session?.currentProfile.name
+            ?? "校对"
+    }
+
+    private func state(from capture: CaptureSession, session: AppSession, status: PopoverContentState.Status) -> PopoverContentState {
+        let profile = session.profiles.first(where: { $0.id == capture.profileID }) ?? session.currentProfile
+        return PopoverContentState(
+            status: status,
+            profileId: capture.profileID,
+            profileName: capture.job == .translate ? "翻译" : profile.name,
+            originalText: capture.originalText,
+            enhancedText: capture.enhancedText,
+            error: "",
+            job: capture.job,
+            translateLanguage: capture.translateLanguage
+        )
+    }
 }
 
 extension PopoverContentState {
-    static func error(_ message: String, profile: String, profileId: String = "", original: String = "") -> PopoverContentState {
+    static func error(
+        _ message: String,
+        profile: String,
+        profileId: String = "",
+        original: String = "",
+        job: SelectionJob = .enhance,
+        translateLanguage: TranslateLanguage = .auto
+    ) -> PopoverContentState {
         PopoverContentState(
             status: .error,
             profileId: profileId,
             profileName: profile,
             originalText: original,
             enhancedText: "",
-            error: message
+            error: message,
+            job: job,
+            translateLanguage: translateLanguage
         )
     }
 }

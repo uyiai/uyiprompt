@@ -48,6 +48,10 @@ final class AppWindows: ObservableObject {
         coordinator.enhanceSelection()
     }
 
+    func translateSelection() {
+        coordinator.translateSelection()
+    }
+
     func showPopoverDemo() {
         popover.showDemo(near: NSEvent.mouseLocation)
     }
@@ -65,6 +69,8 @@ final class AppWindows: ObservableObject {
             onboarding.focus()
             return
         }
+        hidePanel()
+        hidePopover()
         settings.show(page: page)
     }
 
@@ -79,6 +85,7 @@ final class AppWindows: ObservableObject {
         session?.saveNow()
         onboarding.close()
         applyDockPreference()
+        showSettings(page: .providers)
         if firstFinish {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 self?.statusItem?.showWelcomeHint()
@@ -92,6 +99,8 @@ final class AppWindows: ObservableObject {
             showOnboarding()
         case "panel":
             showPanel()
+        case "translate":
+            translateSelection()
         case "auth", "auth-success", "settings":
             showSettings(page: .providers)
         default:

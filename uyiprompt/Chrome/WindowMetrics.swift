@@ -2,8 +2,8 @@ import CoreGraphics
 
 enum WindowMetrics {
     static let windowCorner: CGFloat = 14
-    static let panelSize = CGSize(width: 360, height: 420)
-    static let panelMinSize = CGSize(width: 360, height: 420)
+    static let panelSize = CGSize(width: 380, height: 400)
+    static let panelMinSize = CGSize(width: 360, height: 380)
 
     static let popoverDefault = CGSize(width: 380, height: 208)
     static let popoverMin = CGSize(width: 340, height: 180)

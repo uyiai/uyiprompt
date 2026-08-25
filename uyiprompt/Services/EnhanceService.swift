@@ -17,9 +17,9 @@ enum EnhanceError: LocalizedError {
         case .missingBaseURL:
             return "还没有填接口地址。DeepSeek 一般是 https://api.deepseek.com/v1"
         case .missingModel:
-            return "还没有填模型名。DeepSeek 常用 deepseek-chat"
+            return "还没有填模型名。DeepSeek 常用 deepseek-v4-flash"
         case .emptyInput:
-            return "先选中一段文字，再按 ⌘⇧E"
+            return "先选中一段文字，再按 ⌘⇧E 改写或 ⌘⇧T 翻译"
         case .tooLong:
             return "文字太长了，最多 5 万字"
         case .http(let code, let body):
@@ -98,7 +98,62 @@ enum EnhanceService {
         }
         let user = delimit(trimmed)
 
-        let output = try await chatCompletions(url: url, key: key, model: model, system: system, user: user)
+        let output = try await chatCompletions(
+            url: url,
+            key: key,
+            model: model,
+            system: system,
+            user: user,
+            provider: settings.activeProvider,
+            thinking: endpoint.thinkingEnabled
+        )
+        let cleaned = stripDelimiters(output).trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleaned.isEmpty { throw EnhanceError.emptyResponse }
+        return cleaned
+    }
+
+    static func translate(
+        message: String,
+        settings: LLMSettings,
+        language: TranslateLanguage
+    ) async throws -> String {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { throw EnhanceError.emptyInput }
+        if trimmed.count > messageMax { throw EnhanceError.tooLong }
+        let endpoint = settings.active
+        let key = endpoint.key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if key.isEmpty { throw EnhanceError.missingAPIKey }
+        let model = endpoint.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        if model.isEmpty { throw EnhanceError.missingModel }
+        let url = try OpenAICompatibleEndpoint.chatCompletionsURL(from: endpoint.baseURL)
+
+        let resolved = TranslateLanguage.resolve(language, text: trimmed)
+        let target = resolved.promptName
+        let system = """
+        You are a professional translator.
+        Translate the data between the delimiters into \(target).
+        Critical input rule: \(inputDataRule)
+        Critical output rules: \(outputOnlyRules)
+        Extra translation rules:
+        - Output ONLY the translation. No preface, notes, quotes around the whole text, or bilingual dump.
+        - Preserve URLs, @mentions, #hashtags, code identifiers, file paths, numbers, and emoji exactly.
+        - Preserve markdown, line breaks, and list structure.
+        - Keep the author's tone.
+        - Do not translate fenced code; keep code as-is and translate natural-language comments.
+        - If the source is already in the target language, return it unchanged.
+        """
+        let user = delimit(trimmed)
+        let output = try await chatCompletions(
+            url: url,
+            key: key,
+            model: model,
+            system: system,
+            user: user,
+            maxTokens: 8192,
+            provider: settings.activeProvider,
+            thinking: false,
+            temperature: 0.2
+        )
         let cleaned = stripDelimiters(output).trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.isEmpty { throw EnhanceError.emptyResponse }
         return cleaned
@@ -109,7 +164,7 @@ enum EnhanceService {
         try await testConnection(endpoint: settings.active)
     }
 
-    static func testConnection(endpoint: LLMProviderSettings) async throws -> String {
+    static func testConnection(endpoint: LLMProviderSettings, provider: LLMProvider? = nil) async throws -> String {
         let key = endpoint.key.trimmingCharacters(in: .whitespacesAndNewlines)
         if key.isEmpty { throw EnhanceError.missingAPIKey }
         let model = endpoint.model.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -121,7 +176,9 @@ enum EnhanceService {
             model: model,
             system: "You are a connection check. Reply with the single word pong.",
             user: "ping",
-            maxTokens: 16
+            maxTokens: 16,
+            provider: provider,
+            thinking: false
         )
         return reply.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -132,26 +189,54 @@ enum EnhanceService {
             .replacingOccurrences(of: "<<<END_PROMPTDC_SELECTION>>>", with: "")
     }
 
+    private static func isOpenAIReasoningModel(_ model: String) -> Bool {
+        let name = model.lowercased()
+        return name.hasPrefix("gpt-5") || name.hasPrefix("o1") || name.hasPrefix("o3") || name.hasPrefix("o4")
+    }
+
     private static func chatCompletions(
         url: URL,
         key: String,
         model: String,
         system: String,
         user: String,
-        maxTokens: Int = 4096
+        maxTokens: Int = 4096,
+        provider: LLMProvider?,
+        thinking: Bool,
+        temperature: Double = 0.3
     ) async throws -> String {
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
-            "temperature": 0.3,
-            "max_tokens": maxTokens,
             "messages": [
                 ["role": "system", "content": system],
                 ["role": "user", "content": user],
             ],
         ]
-        let json = try await postJSON(url: url, body: body, headers: [
-            "Authorization": "Bearer \(key)",
-        ])
+        let openaiReasoning = isOpenAIReasoningModel(model)
+        if openaiReasoning {
+            body["max_completion_tokens"] = thinking ? 8192 : max(maxTokens, 2048)
+            body["reasoning_effort"] = thinking ? "medium" : "none"
+        } else {
+            body["temperature"] = temperature
+            body["max_tokens"] = thinking ? 8192 : maxTokens
+            switch provider {
+            case .deepseek, .moonshot:
+                body["thinking"] = ["type": thinking ? "enabled" : "disabled"]
+                if thinking { body["reasoning_effort"] = "high" }
+            case .custom:
+                if thinking {
+                    body["thinking"] = ["type": "enabled"]
+                }
+            case .openai, .none:
+                break
+            }
+        }
+        let json = try await postJSON(
+            url: url,
+            body: body,
+            headers: ["Authorization": "Bearer \(key)"],
+            timeout: thinking ? 90 : 60
+        )
         if let choices = json["choices"] as? [[String: Any]],
            let message = choices.first?["message"] as? [String: Any] {
             if let content = message["content"] as? String, !content.isEmpty {
@@ -165,10 +250,15 @@ enum EnhanceService {
         throw EnhanceError.emptyResponse
     }
 
-    private static func postJSON(url: URL, body: [String: Any], headers: [String: String]) async throws -> [String: Any] {
+    private static func postJSON(
+        url: URL,
+        body: [String: Any],
+        headers: [String: String],
+        timeout: TimeInterval = 60
+    ) async throws -> [String: Any] {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60
+        request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)

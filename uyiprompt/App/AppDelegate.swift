@@ -1,7 +1,7 @@
 import AppKit
 
 /// AppKit owns process lifetime, the status item, URL scheme, and every product window.
-/// SwiftUI is hosted inside those windows and never creates a `WindowGroup`.
+/// SwiftUI is hosted inside AppKit windows. The SwiftUI `App` scene is only a launch stub.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var session: AppSession?
@@ -31,14 +31,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.statusItem = statusItem
         self.shortcuts = shortcuts
         installMainMenu()
+        observeCommands()
 
         let needsOnboarding = !session.onboardingCompleted
         let boot = "[uyiprompt] launched onboardingCompleted=\(needsOnboarding ? "no" : "yes")\n"
         try? boot.write(toFile: "/tmp/uyiprompt-debug.log", atomically: true, encoding: .utf8)
         if needsOnboarding {
-            windows.showOnboarding()
+            DispatchQueue.main.async { [weak windows] in
+                windows?.showOnboarding()
+            }
         } else {
             windows.applyDockPreference()
+            DispatchQueue.main.async { [weak windows] in
+                windows?.showSettings(page: .providers)
+            }
+        }
+        dismissDummySwiftUIWindows()
+        for delay in [0.05, 0.25, 0.8] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.dismissDummySwiftUIWindows()
+            }
+        }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    private func observeCommands() {
+        NotificationCenter.default.addObserver(self, selector: #selector(openSettings(_:)), name: .uyiOpenSettings, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(openOnboarding(_:)), name: .uyiOpenOnboarding, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(openPanel(_:)), name: .uyiOpenPanel, object: nil)
+    }
+
+    private func dismissDummySwiftUIWindows() {
+        let kept: Set<String> = [
+            "uyiprompt.panel",
+            "uyiprompt.popover",
+            "uyiprompt.settings",
+            "uyiprompt.onboarding",
+        ]
+        for window in NSApp.windows {
+            if let id = window.identifier?.rawValue, kept.contains(id) { continue }
+            if window is NSPanel { continue }
+            if window.className.contains("StatusBar") || window.className.contains("NSMenu") { continue }
+            if window.title == "设置" || window.title == "欢迎" { continue }
+            window.orderOut(nil)
         }
     }
 
@@ -75,9 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            windows?.showPanel()
-        }
+        windows?.showSettings(page: .providers)
         return true
     }
 
