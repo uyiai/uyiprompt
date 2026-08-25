@@ -20,21 +20,20 @@ struct PanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().opacity(0.22)
             VStack(alignment: .leading, spacing: 10) {
                 if !session.llm.isReady {
                     SetupBanner(
                         icon: "key.fill",
-                        text: "还差 API Key，填上就能改写和翻译",
-                        actionTitle: "去填写"
+                        text: L10n.t("panel.needKey"),
+                        actionTitle: L10n.t("panel.fill")
                     ) {
                         windows.showSettings(page: .providers)
                     }
                 } else if !accessibilityOn {
                     SetupBanner(
                         icon: "accessibility",
-                        text: "辅助功能对不上当前程序，读不了选中文字",
-                        actionTitle: "去开启"
+                        text: L10n.t("panel.needAccess"),
+                        actionTitle: L10n.t("access.enable")
                     ) {
                         SelectionService.requestAccess()
                     }
@@ -42,20 +41,20 @@ struct PanelView: View {
 
                 HStack(spacing: 8) {
                     CapsuleChooser(
-                        options: [(SelectionJob.enhance, "改写"), (.translate, "翻译")],
+                        options: [(SelectionJob.enhance, L10n.t("job.enhance")), (.translate, L10n.t("job.translate"))],
                         selection: $panelJob
                     )
                     .frame(width: 148)
                     if panelJob == .enhance {
-                        Picker("风格", selection: $session.currentProfileID) {
+                        Picker(L10n.t("panel.style"), selection: $session.currentProfileID) {
                             ForEach(session.profiles) { profile in
-                                Label(profile.name, systemImage: profile.symbol).tag(profile.id)
+                                Label(profile.localizedName, systemImage: profile.symbol).tag(profile.id)
                             }
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
                     } else {
-                        Picker("译成", selection: $session.translateLanguage) {
+                        Picker(L10n.t("panel.into"), selection: $session.translateLanguage) {
                             ForEach(TranslateLanguage.allCases) { language in
                                 Text(language.shortTitle).tag(language)
                             }
@@ -83,7 +82,8 @@ struct PanelView: View {
             .padding(12)
         }
         .frame(minWidth: WindowMetrics.panelMinSize.width, minHeight: WindowMetrics.panelMinSize.height)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.28))
+        .background(UIChrome.canvasFill.opacity(0.55))
+        .id(session.uiLanguage)
         .onAppear { accessibilityOn = SelectionService.isTrusted }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             accessibilityOn = SelectionService.isTrusted
@@ -92,16 +92,16 @@ struct PanelView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            AppMark(size: 22)
+            ColorTile(symbol: "pencil.and.outline", color: Color(red: 0.20, green: 0.48, blue: 1.00), size: 22)
             Text("uyiprompt")
-                .font(.headline)
+                .font(.headline.weight(.semibold))
             Spacer()
             HStack(spacing: 4) {
-                IconButton(symbol: session.panelPinned ? "pin.fill" : "pin", help: "始终置顶", active: session.panelPinned) {
+                IconButton(symbol: session.panelPinned ? "pin.fill" : "pin", help: L10n.t("panel.pin"), active: session.panelPinned) {
                     session.panelPinned.toggle()
                     windows.applyPanelPin()
                 }
-                IconButton(symbol: "xmark", help: "收起") {
+                IconButton(symbol: "xmark", help: L10n.t("panel.hide")) {
                     windows.hidePanel()
                 }
             }
@@ -118,9 +118,9 @@ struct PanelView: View {
                 .padding(8)
             if draft.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(panelJob == .translate ? "粘贴要译的文字" : "粘贴要改的文字")
+                    Text(panelJob == .translate ? L10n.t("panel.placeholder.translate") : L10n.t("panel.placeholder.enhance"))
                         .foregroundStyle(.secondary)
-                    Text("或在别的软件里选中后点弹出的按钮")
+                    Text(L10n.t("panel.placeholder.hint"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -129,11 +129,7 @@ struct PanelView: View {
             }
         }
         .frame(minHeight: 96, maxHeight: result.isEmpty && error.isEmpty ? 220 : 120)
-        .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
-        )
+        .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
     }
 
     @ViewBuilder
@@ -147,7 +143,7 @@ struct PanelView: View {
                         .font(.callout)
                         .foregroundStyle(Color.red)
                     if error.contains("密钥") || error.contains("API Key") {
-                        Button("去填写密钥") { windows.showSettings(page: .providers) }
+                        Button(L10n.t("panel.goKey")) { windows.showSettings(page: .providers) }
                             .controlSize(.small)
                     }
                 }
@@ -159,7 +155,7 @@ struct PanelView: View {
                         ResultViewToggle(mode: $mode)
                     }
                     Spacer()
-                    Button(copied ? "已复制" : "复制") { copyResult() }
+                    Button(copied ? L10n.t("panel.copied") : L10n.t("panel.copy")) { copyResult() }
                         .controlSize(.small)
                 }
                 ScrollView {
@@ -186,7 +182,7 @@ struct PanelView: View {
 
     private var footer: some View {
         HStack {
-            Button("收起") { windows.hidePanel() }
+            Button(L10n.t("panel.hide")) { windows.hidePanel() }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("⌘⇧U")
@@ -200,12 +196,12 @@ struct PanelView: View {
 
     private var actionTitle: String {
         if busy {
-            return panelJob == .translate ? "正在翻译…" : "正在改写…"
+            return panelJob == .translate ? L10n.t("panel.working.translate") : L10n.t("panel.working.enhance")
         }
         if result.isEmpty {
-            return panelJob == .translate ? "翻译" : "改写"
+            return panelJob == .translate ? L10n.t("job.translate") : L10n.t("job.enhance")
         }
-        return panelJob == .translate ? "再译一次" : "再改一次"
+        return panelJob == .translate ? L10n.t("panel.again.translate") : L10n.t("panel.again.enhance")
     }
 
     private func run() {
@@ -215,27 +211,11 @@ struct PanelView: View {
         if panelJob == .enhance {
             mode = ResultViewMode.default(forProfileID: session.currentProfile.id)
         }
-        let profile = session.currentProfile
-        let language = session.translateLanguage
         let job = panelJob
         Task {
             defer { busy = false }
             do {
-                switch job {
-                case .enhance:
-                    result = try await EnhanceService.enhance(
-                        message: text,
-                        profilePrompt: profile.systemPrompt,
-                        settings: session.llm,
-                        language: session.enhanceLanguage
-                    )
-                case .translate:
-                    result = try await EnhanceService.translate(
-                        message: text,
-                        settings: session.llm,
-                        language: language
-                    )
-                }
+                result = try await windows.rewriteDraft(text, job: job)
             } catch {
                 self.error = error.localizedDescription
             }

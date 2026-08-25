@@ -1,15 +1,22 @@
 import SwiftUI
 
 struct ActionBarView: View {
+    @EnvironmentObject private var session: AppSession
     var onEnhance: () -> Void
     var onTranslate: () -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
-            chip(title: "改写", symbol: "pencil.line", action: onEnhance)
-            chip(title: "翻译", symbol: "globe", action: onTranslate)
+        let _ = session.uiLanguage
+        HStack(spacing: 2) {
+            chip(title: L10n.t("job.enhance"), symbol: "pencil.line", action: onEnhance)
+            chip(title: L10n.t("job.translate"), symbol: "globe", action: onTranslate)
         }
-        .padding(5)
+        .padding(4)
+        .background(Color.black.opacity(0.88), in: Capsule())
+        .overlay(
+            Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.28), radius: 12, y: 4)
     }
 
     private func chip(title: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -19,10 +26,9 @@ struct ActionBarView: View {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
         }
-        .foregroundStyle(Color.primary)
-        .padding(.horizontal, 10)
+        .foregroundStyle(Color.white.opacity(0.92))
+        .padding(.horizontal, 11)
         .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.14), in: Capsule())
         .contentShape(Capsule())
         .onTapGesture(perform: action)
         .help(title)

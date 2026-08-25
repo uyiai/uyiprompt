@@ -71,11 +71,11 @@ final class EnhancePopoverController {
             WindowMetrics.popoverMax.height,
             max(WindowMetrics.popoverDefault.height, readyHeight)
         )
-        window.setFrame(
-            Self.clampedFrame(anchor: point, size: CGSize(width: WindowMetrics.popoverDefault.width, height: height)),
-            display: true
+        WindowPresentation.show(
+            window,
+            policy: WindowPresentation.overlayPolicy,
+            frame: Self.clampedFrame(anchor: point, size: CGSize(width: WindowMetrics.popoverDefault.width, height: height))
         )
-        window.orderFrontRegardless()
     }
 
     var isVisible: Bool { panel?.isVisible == true }
@@ -103,7 +103,8 @@ final class EnhancePopoverController {
             .environmentObject(session)
             .environmentObject(windows),
             material: .hudWindow,
-            cornerRadius: WindowMetrics.windowCorner
+            cornerRadius: WindowMetrics.windowCorner,
+            firstMouse: true
         )
         panel = created
         return created

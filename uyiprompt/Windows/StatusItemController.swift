@@ -18,7 +18,7 @@ final class StatusItemController: NSObject {
             image?.isTemplate = true
             button.image = image?.withSymbolConfiguration(.init(pointSize: 14, weight: .semibold))
             button.image?.isTemplate = true
-            button.toolTip = "uyiprompt · 选中文字后点「改写」或「翻译」"
+            button.toolTip = L10n.t("status.tooltip")
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.target = self
             button.action = #selector(statusItemClicked(_:))
@@ -43,28 +43,28 @@ final class StatusItemController: NSObject {
         guard let button = statusItem?.button else { return }
         let menu = NSMenu()
         if session?.llm.isReady == false {
-            menu.addItem(Self.item("填写 API Key…", action: #selector(openProviders), target: self, symbol: "key"))
+            menu.addItem(Self.item(L10n.t("menu.fillKey"), action: #selector(openProviders), target: self, symbol: "key"))
         }
         if SelectionService.isTrusted == false {
-            menu.addItem(Self.item("开启辅助功能…", action: #selector(openAccessibility), target: self, symbol: "accessibility"))
+            menu.addItem(Self.item(L10n.t("menu.enableAccess"), action: #selector(openAccessibility), target: self, symbol: "accessibility"))
         }
         if session?.llm.isReady == false || SelectionService.isTrusted == false {
             menu.addItem(.separator())
         }
-        menu.addItem(Self.item("打开面板", action: #selector(openPanel), target: self, symbol: "macwindow"))
-        menu.addItem(Self.item("改写选中文字", action: #selector(enhanceSelection), target: self, symbol: "character.cursor.ibeam"))
-        menu.addItem(Self.item("翻译选中文字", action: #selector(translateSelection), target: self, symbol: "globe"))
-        menu.addItem(Self.item("模型服务", action: #selector(openProviders), target: self, symbol: "cpu"))
-        menu.addItem(Self.item("设置…", action: #selector(openSettings), target: self, symbol: "gearshape", key: ","))
-        menu.addItem(Self.item("使用说明", action: #selector(openOnboarding), target: self, symbol: "questionmark.circle"))
+        menu.addItem(Self.item(L10n.t("menu.openPanel"), action: #selector(openPanel), target: self, symbol: "macwindow"))
+        menu.addItem(Self.item(L10n.t("job.enhanceSelection"), action: #selector(enhanceSelection), target: self, symbol: "character.cursor.ibeam"))
+        menu.addItem(Self.item(L10n.t("job.translateSelection"), action: #selector(translateSelection), target: self, symbol: "globe"))
+        menu.addItem(Self.item(L10n.t("menu.providers"), action: #selector(openProviders), target: self, symbol: "cpu"))
+        menu.addItem(Self.item(L10n.t("menu.settings"), action: #selector(openSettings), target: self, symbol: "gearshape", key: ","))
+        menu.addItem(Self.item(L10n.t("menu.onboarding"), action: #selector(openOnboarding), target: self, symbol: "questionmark.circle"))
         menu.addItem(.separator())
-        let currentName = session?.currentProfile.name ?? "校对"
-        let active = NSMenuItem(title: "当前风格：\(currentName)", action: nil, keyEquivalent: "")
+        let currentName = session?.currentProfile.localizedName ?? L10n.t("profile.grammar")
+        let active = NSMenuItem(title: L10n.format("menu.currentProfile", currentName), action: nil, keyEquivalent: "")
         active.image = NSImage(systemSymbolName: "text.book.closed", accessibilityDescription: nil)
         active.submenu = profileSubmenu()
         menu.addItem(active)
         menu.addItem(.separator())
-        menu.addItem(Self.item("退出 uyiprompt", action: #selector(quit), target: self, symbol: "power", key: "q"))
+        menu.addItem(Self.item(L10n.t("menu.quit"), action: #selector(quit), target: self, symbol: "power", key: "q"))
         statusItem?.menu = menu
         button.performClick(nil)
         statusItem?.menu = nil
@@ -73,11 +73,11 @@ final class StatusItemController: NSObject {
     private func profileSubmenu() -> NSMenu {
         let menu = NSMenu()
         guard let session else {
-            menu.addItem(NSMenuItem(title: "还没有风格", action: nil, keyEquivalent: ""))
+            menu.addItem(NSMenuItem(title: L10n.t("menu.noProfiles"), action: nil, keyEquivalent: ""))
             return menu
         }
         for profile in session.profiles {
-            let item = NSMenuItem(title: profile.name, action: #selector(selectProfile(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: profile.localizedName, action: #selector(selectProfile(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = profile.id
             item.state = profile.id == session.currentProfileID ? .on : .off
@@ -93,6 +93,10 @@ final class StatusItemController: NSObject {
             item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         }
         return item
+    }
+
+    func applyLanguage() {
+        statusItem?.button?.toolTip = L10n.t("status.tooltip")
     }
 
     func showWelcomeHint() {

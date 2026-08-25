@@ -26,12 +26,11 @@ final class ActionBarController {
         pendingText = text
         pendingBundleID = bundleID
         let window = ensureWindow()
-        let size = WindowMetrics.actionBarSize
-        let frame = Self.clampedFrame(anchor: point, size: size)
-        window.setFrame(frame, display: true)
-        window.alphaValue = 1
-        window.orderFrontRegardless()
-        NSLog("[uyiprompt] action bar show frame=%@ textLen=%ld", NSStringFromRect(frame), text.count)
+        WindowPresentation.show(
+            window,
+            policy: WindowPresentation.overlayPolicy,
+            frame: Self.clampedFrame(anchor: point, size: WindowMetrics.actionBarSize)
+        )
     }
 
     func hide() {
@@ -42,34 +41,21 @@ final class ActionBarController {
 
     private func ensureWindow() -> NSPanel {
         if let panel { return panel }
-        guard windows != nil else {
+        guard let session, windows != nil else {
             preconditionFailure("ActionBarController.attach must run first")
         }
         let created = ProductWindowFactory.makeActionBar(size: WindowMetrics.actionBarSize)
-        let root = ActionBarView(
-            onEnhance: { [weak self] in self?.run(.enhance) },
-            onTranslate: { [weak self] in self?.run(.translate) }
+        created.contentViewController = GlassHostingController(
+            rootView: ActionBarView(
+                onEnhance: { [weak self] in self?.run(.enhance) },
+                onTranslate: { [weak self] in self?.run(.translate) }
+            )
+            .environmentObject(session),
+            material: .popover,
+            blending: .behindWindow,
+            cornerRadius: WindowMetrics.actionBarSize.height / 2,
+            firstMouse: true
         )
-        let host = FirstMouseHostingView(rootView: root)
-        host.sizingOptions = []
-        let effect = NSVisualEffectView()
-        effect.material = .popover
-        effect.blendingMode = .behindWindow
-        effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = WindowMetrics.actionBarSize.height / 2
-        effect.layer?.masksToBounds = true
-        host.translatesAutoresizingMaskIntoConstraints = false
-        effect.addSubview(host)
-        NSLayoutConstraint.activate([
-            host.leadingAnchor.constraint(equalTo: effect.leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
-            host.topAnchor.constraint(equalTo: effect.topAnchor),
-            host.bottomAnchor.constraint(equalTo: effect.bottomAnchor),
-        ])
-        effect.frame = NSRect(origin: .zero, size: WindowMetrics.actionBarSize)
-        host.frame = effect.bounds
-        created.contentView = effect
         created.setContentSize(WindowMetrics.actionBarSize)
         panel = created
         return created
@@ -95,9 +81,4 @@ final class ActionBarController {
         y = min(max(y, work.minY + 8), work.maxY - size.height - 8)
         return NSRect(x: x.rounded(), y: y.rounded(), width: size.width.rounded(), height: size.height.rounded())
     }
-}
-
-final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override var mouseDownCanMoveWindow: Bool { false }
 }

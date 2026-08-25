@@ -1,9 +1,16 @@
 import AppKit
 
 /// AppKit owns process lifetime, the status item, URL scheme, and every product window.
-/// SwiftUI is hosted inside AppKit windows. The SwiftUI `App` scene is only a launch stub.
+/// SwiftUI is hosted inside those windows; this type is the process entry point.
+@main
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
+    }
     private var session: AppSession?
     private var windows: AppWindows?
     private var statusItem: StatusItemController?
@@ -11,10 +18,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
-        let bootDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("uyiprompt", isDirectory: true)
-        try? FileManager.default.createDirectory(at: bootDir, withIntermediateDirectories: true)
-        try? "didFinishLaunching\n".write(to: bootDir.appendingPathComponent("boot.log"), atomically: true, encoding: .utf8)
 
         let session = AppSession()
         let windows = AppWindows()
@@ -32,10 +35,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.shortcuts = shortcuts
         installMainMenu()
         observeCommands()
+        NotificationCenter.default.addObserver(self, selector: #selector(languageDidChange(_:)), name: .uyiLanguageDidChange, object: nil)
+
+        if isRunningUnderTests { return }
 
         let needsOnboarding = !session.onboardingCompleted
-        let boot = "[uyiprompt] launched onboardingCompleted=\(needsOnboarding ? "no" : "yes")\n"
-        try? boot.write(toFile: "/tmp/uyiprompt-debug.log", atomically: true, encoding: .utf8)
         if needsOnboarding {
             DispatchQueue.main.async { [weak windows] in
                 windows?.showOnboarding()
@@ -46,16 +50,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 windows?.showSettings(page: .providers)
             }
         }
-        dismissDummySwiftUIWindows()
-        for delay in [0.05, 0.25, 0.8] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                self?.dismissDummySwiftUIWindows()
-            }
-        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    private var isRunningUnderTests: Bool {
+        let env = ProcessInfo.processInfo.environment
+        return env["XCTestConfigurationFilePath"] != nil || env["XCTestBundlePath"] != nil
     }
 
     private func observeCommands() {
@@ -64,35 +67,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(openPanel(_:)), name: .uyiOpenPanel, object: nil)
     }
 
-    private func dismissDummySwiftUIWindows() {
-        let kept: Set<String> = [
-            "uyiprompt.panel",
-            "uyiprompt.popover",
-            "uyiprompt.settings",
-            "uyiprompt.onboarding",
-            "uyiprompt.actionbar",
-        ]
-        for window in NSApp.windows {
-            if let id = window.identifier?.rawValue, kept.contains(id) { continue }
-            if window is NSPanel { continue }
-            if window.className.contains("StatusBar") || window.className.contains("NSMenu") { continue }
-            if window.title == "设置" || window.title == "欢迎" { continue }
-            window.orderOut(nil)
-        }
-    }
-
     private func installMainMenu() {
         let menu = NSMenu()
         let appItem = NSMenuItem()
         menu.addItem(appItem)
         let appMenu = NSMenu(title: "uyiprompt")
-        appMenu.addItem(withTitle: "打开面板", action: #selector(openPanel(_:)), keyEquivalent: "u")
+        appMenu.addItem(withTitle: L10n.t("menu.openPanel"), action: #selector(openPanel(_:)), keyEquivalent: "u")
         appMenu.items.last?.keyEquivalentModifierMask = [.command, .shift]
-        appMenu.addItem(withTitle: "模型服务", action: #selector(openProviders(_:)), keyEquivalent: "")
-        appMenu.addItem(withTitle: "设置…", action: #selector(openSettings(_:)), keyEquivalent: ",")
-        appMenu.addItem(withTitle: "使用说明", action: #selector(openOnboarding(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: L10n.t("menu.providers"), action: #selector(openProviders(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: L10n.t("menu.settings"), action: #selector(openSettings(_:)), keyEquivalent: ",")
+        appMenu.addItem(withTitle: L10n.t("menu.onboarding"), action: #selector(openOnboarding(_:)), keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())
-        appMenu.addItem(withTitle: "退出 uyiprompt", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         NSApp.mainMenu = menu
     }
@@ -111,6 +97,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openOnboarding(_ sender: Any?) {
         windows?.showOnboarding()
+    }
+
+    @objc private func languageDidChange(_ sender: Any?) {
+        installMainMenu()
+        statusItem?.applyLanguage()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

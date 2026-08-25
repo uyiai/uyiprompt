@@ -30,9 +30,9 @@ struct ModelSetupCard: View {
                 statusRow
             }
 
-            field("API Key") {
+            field(L10n.t("model.apiKey")) {
                 if let url = provider.signupURL {
-                    Button("去申请密钥") { NSWorkspace.shared.open(url) }
+                    Button(L10n.t("model.getKey")) { NSWorkspace.shared.open(url) }
                         .buttonStyle(.borderless)
                         .font(.caption.weight(.semibold))
                 }
@@ -42,7 +42,7 @@ struct ModelSetupCard: View {
                         if revealKey {
                             TextField(provider.keyPlaceholder, text: keyBinding)
                         } else {
-                            SecureField("粘贴密钥，只存在这台电脑", text: keyBinding)
+                            SecureField(L10n.t("model.keyPlaceholder"), text: keyBinding)
                         }
                     }
                     .textFieldStyle(.roundedBorder)
@@ -54,47 +54,48 @@ struct ModelSetupCard: View {
                             .frame(width: 20)
                     }
                     .buttonStyle(.plain)
-                    .help(revealKey ? "隐藏密钥" : "显示密钥")
+                    .help(revealKey ? L10n.t("model.hideKey") : L10n.t("model.showKey"))
                 }
             }
 
-            field("模型") {
+            field(L10n.t("model.model")) {
                 EmptyView()
             } content: {
                 if !provider.suggestedModels.isEmpty {
                     CapsuleChooser(options: modelOptions, selection: modelBinding)
                 }
                 if showModelField {
-                    TextField("模型名，可手填", text: modelBinding)
+                    TextField(L10n.t("model.modelPlaceholder"), text: modelBinding)
                         .textFieldStyle(.roundedBorder)
                 }
             }
 
             if provider.supportsThinkingToggle {
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("打开思考", isOn: thinkingBinding)
-                    Text("改写一般不用开，更快更省。编程、长文、难改时再开。")
+                    Toggle(L10n.t("model.thinking"), isOn: thinkingBinding)
+                        .toggleStyle(.switch)
+                    Text(L10n.t("model.thinking.caption"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
 
             if provider == .custom {
-                field("接口地址") {
+                field(L10n.t("model.baseURL")) {
                     EmptyView()
                 } content: {
                     TextField("https://api.example.com/v1", text: baseURLBinding)
                         .textFieldStyle(.roundedBorder)
-                    Text("使用 OpenAI 兼容的 /v1/chat/completions。")
+                    Text(L10n.t("model.baseURL.caption"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             } else if compact == false {
-                DisclosureGroup("高级：接口地址") {
+                DisclosureGroup(L10n.t("model.advancedURL")) {
                     TextField(provider.defaultBaseURL, text: baseURLBinding)
                         .textFieldStyle(.roundedBorder)
                         .padding(.top, 6)
-                    Text("一般不用改。")
+                    Text(L10n.t("model.advancedURL.caption"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -107,7 +108,7 @@ struct ModelSetupCard: View {
                     if testing {
                         ProgressView().controlSize(.small)
                     } else {
-                        Label("测试连接", systemImage: "bolt.horizontal")
+                        Label(L10n.t("model.test"), systemImage: "bolt.horizontal")
                     }
                 }
                 .buttonStyle(.bordered)
@@ -145,7 +146,7 @@ struct ModelSetupCard: View {
     @ViewBuilder
     private var statusRow: some View {
         if testOK {
-            Label("连接成功，可以用了", systemImage: "checkmark.circle.fill")
+            Label(L10n.t("model.testOK"), systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Color.green)
                 .font(.callout.weight(.medium))
         } else if thisReady {
@@ -289,7 +290,7 @@ struct ModelSetupCard: View {
             do {
                 _ = try await EnhanceService.testConnection(endpoint: target, provider: provider)
                 testOK = true
-                testMessage = "连接成功，可以用了"
+                testMessage = L10n.t("model.testOK")
                 if session.llm.activeProvider != provider {
                     var next = session.llm
                     next.activeProvider = provider

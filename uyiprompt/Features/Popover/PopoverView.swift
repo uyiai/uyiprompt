@@ -18,15 +18,15 @@ struct PopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().opacity(0.3)
             bodyContent
                 .padding(12)
-            Divider().opacity(0.3)
             footer
-                .padding(12)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
         }
         .frame(minWidth: WindowMetrics.popoverMin.width, minHeight: WindowMetrics.popoverMin.height)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.28))
+        .background(UIChrome.canvasFill.opacity(0.55))
+        .id(session.uiLanguage)
         .onChange(of: model.state.profileId) { _, id in
             mode = isTranslate ? .edit : ResultViewMode.default(forProfileID: id)
         }
@@ -44,7 +44,7 @@ struct PopoverView: View {
                 Image(systemName: "globe")
                     .foregroundStyle(Color.accentColor)
                     .font(.body.weight(.semibold))
-                Picker("译成", selection: languageBinding) {
+                Picker(L10n.t("panel.into"), selection: languageBinding) {
                     ForEach(TranslateLanguage.allCases) { language in
                         Text(language.title).tag(language)
                     }
@@ -58,9 +58,9 @@ struct PopoverView: View {
                         .foregroundStyle(.tertiary)
                 }
             } else {
-                Picker("写作风格", selection: profileBinding) {
+                Picker(L10n.t("panel.style"), selection: profileBinding) {
                     ForEach(session.profiles) { profile in
-                        Label(profile.name, systemImage: profile.symbol).tag(profile.id)
+                        Label(profile.localizedName, systemImage: profile.symbol).tag(profile.id)
                     }
                 }
                 .labelsHidden()
@@ -68,7 +68,7 @@ struct PopoverView: View {
                 .disabled(model.state.status == .loading)
             }
             Spacer()
-            IconButton(symbol: "xmark", help: "关闭", action: onClose)
+            IconButton(symbol: "xmark", help: L10n.t("popover.close"), action: onClose)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -103,12 +103,12 @@ struct PopoverView: View {
                         .foregroundStyle(Color.red)
                 }
                 if model.state.error.contains("辅助功能") || model.state.error.contains("Accessibility") {
-                    Button("去系统设置重新授权") {
+                    Button(L10n.t("popover.reauth")) {
                         SelectionService.requestAccess()
                     }
                 }
                 if model.state.error.contains("API Key") || model.state.error.contains("密钥") {
-                    Button("去填写密钥") {
+                    Button(L10n.t("panel.goKey")) {
                         windows.showSettings(page: .providers)
                     }
                 }
@@ -152,12 +152,12 @@ struct PopoverView: View {
     private var footer: some View {
         HStack {
             if model.state.status == .error {
-                Button("再试一次", action: onRetry)
+                Button(L10n.t("popover.retry"), action: onRetry)
             } else if model.state.status == .ready && model.state.enhancedText.isEmpty {
-                Button(isTranslate ? "开始翻译" : "开始改写", action: onRetry)
+                Button(isTranslate ? L10n.t("popover.start.translate") : L10n.t("popover.start.enhance"), action: onRetry)
                     .buttonStyle(.borderedProminent)
             } else {
-                Button(copied ? "已复制" : "复制") {
+                Button(copied ? L10n.t("panel.copied") : L10n.t("panel.copy")) {
                     onCopy()
                     copied = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
@@ -167,10 +167,10 @@ struct PopoverView: View {
             Spacer()
             if !(model.state.status == .ready && model.state.enhancedText.isEmpty) {
                 Button(action: onReplace) {
-                    Label(isTranslate ? "替换为译文" : "替换原文", systemImage: "arrow.uturn.forward")
+                    Label(isTranslate ? L10n.t("popover.replace.translate") : L10n.t("popover.replace.enhance"), systemImage: "arrow.uturn.forward")
                 }
                 .buttonStyle(.borderedProminent)
-                .help(isTranslate ? "用译文覆盖选中的文字" : "用改写结果覆盖选中的文字")
+                .help(isTranslate ? L10n.t("popover.replace.help.translate") : L10n.t("popover.replace.help.enhance"))
                 .disabled(model.state.status != .ready || model.state.enhancedText.isEmpty)
             }
         }
@@ -179,9 +179,9 @@ struct PopoverView: View {
     private var loadingTitle: String {
         if isTranslate {
             let target = TranslateLanguage.resolve(model.state.translateLanguage, text: model.state.originalText)
-            return "正在译成\(target.shortTitle)…"
+            return L10n.format("popover.loading.translate", target.shortTitle)
         }
-        return "正在用「\(model.state.profileName)」改写…"
+        return L10n.format("popover.loading.enhance", model.state.profileName)
     }
 
     private var profileBinding: Binding<String> {

@@ -11,30 +11,15 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-                .frame(width: 200)
-            Divider().opacity(0.35)
-            Group {
-                if model.page == .providers {
-                    ProviderSettingsView(editing: $model.editingProvider)
-                        .padding(.top, 28)
-                } else {
-                    VStack(alignment: .leading, spacing: 18) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(model.page.title)
-                                .font(.title.weight(.semibold))
-                            Text(model.page.subtitle)
-                                .foregroundStyle(.secondary)
-                        }
-                        page
-                    }
-                    .padding(.top, 36)
-                    .padding(.horizontal, 28)
-                    .padding(.bottom, 24)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(width: UIChrome.sidebarWidth)
+            pageCanvas
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(UIChrome.canvasFill)
+        .ignoresSafeArea()
+        .id(session.uiLanguage)
+        .environment(\.locale, session.uiLanguage.locale)
         .onAppear {
             if apps.isEmpty { apps = AppsService.list() }
             accessibilityOn = SelectionService.isTrusted
@@ -45,30 +30,30 @@ struct SettingsView: View {
         }
     }
 
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
-                AppMark(size: 28)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("uyiprompt")
-                        .font(.headline)
-                    Text("菜单栏改写 / 翻译")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+    private var pageCanvas: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                page
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 42)
-            .padding(.bottom, 16)
+            .padding(.top, 20)
+            .padding(.horizontal, 22)
+            .padding(.bottom, 24)
+            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
 
-            Text("设置")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 2)
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Color.clear.frame(height: 36)
 
             ForEach(SettingsPage.allCases) { page in
-                SettingsNavRow(title: page.title, symbol: page.symbol, selected: model.page == page) {
+                SettingsNavRow(
+                    title: page.title,
+                    symbol: page.symbol,
+                    color: page.tileColor,
+                    selected: model.page == page
+                ) {
                     model.page = page
                     if page == .providers {
                         model.editingProvider = session.llm.activeProvider
@@ -79,28 +64,32 @@ struct SettingsView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                ProviderIcon(provider: session.llm.activeProvider, size: 22)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(session.llm.readySummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text("v0.1.0")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
+                Text("uyiprompt")
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Text(session.llm.isReady ? L10n.t("nav.connected") : L10n.t("nav.disconnected"))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Color.primary.opacity(0.06), in: Capsule())
             }
-            .padding(10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
+            )
         }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
-        .background(Color.primary.opacity(0.03))
+        .padding(.horizontal, 10)
+        .padding(.bottom, 12)
     }
 
     @ViewBuilder
     private var page: some View {
         switch model.page {
-        case .providers: EmptyView()
+        case .providers: ProviderSettingsView(editing: $model.editingProvider)
         case .general: generalPage
         case .profiles: profilesPage
         case .appDefaults: appDefaultsPage
@@ -109,149 +98,140 @@ struct SettingsView: View {
     }
 
     private var generalPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                settingsBlock("外观") {
-                    HStack {
-                        Text("主题")
+        VStack(alignment: .leading, spacing: 22) {
+            SettingsSection(title: L10n.t("appearance")) {
+                VStack(spacing: 0) {
+                    HStack(alignment: .center) {
+                        Text(L10n.t("appearance.theme"))
                         Spacer()
-                        Picker("外观", selection: $session.appearance) {
-                            ForEach(AppSession.AppearancePreference.allCases) { item in
-                                Text(item.title).tag(item)
+                        AppearanceChooser(selection: $session.appearance)
+                            .onChange(of: session.appearance) { _, _ in
+                                windows.applyAppearance()
+                            }
+                    }
+                    .padding(16)
+                    SettingsHairline()
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(L10n.t("language.section"))
+                                Text(L10n.t("language.caption"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        Picker(L10n.t("language.section"), selection: $session.uiLanguage) {
+                            ForEach(AppLanguage.allCases) { item in
+                                Text(item.pickerTitle).tag(item)
                             }
                         }
-                        .labelsHidden()
                         .pickerStyle(.segmented)
-                        .frame(maxWidth: 260)
-                        .onChange(of: session.appearance) { _, _ in
-                            windows.applyAppearance()
-                        }
-                    }
-                    .padding(12)
-                }
-
-                settingsBlock("改写语言") {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("输出语言")
-                            Text("自动会保持原文语言。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Picker("语言", selection: $session.enhanceLanguage) {
-                            ForEach(AppSession.EnhanceLanguage.allCases) { item in
-                                Text(item.title).tag(item)
-                            }
-                        }
                         .labelsHidden()
-                        .frame(width: 200)
                     }
-                    .padding(12)
+                    .padding(16)
                 }
+            }
 
-                settingsBlock("翻译") {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("目标语言")
-                            Text("自动：中文译成英语，其它语言译成中文。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Picker("译成", selection: $session.translateLanguage) {
-                            ForEach(TranslateLanguage.allCases) { item in
-                                Text(item.title).tag(item)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 200)
-                    }
-                    .padding(12)
-                }
-
-                settingsBlock("权限") {
-                    HStack(alignment: .center, spacing: 10) {
-                        Image(systemName: "accessibility")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(accessibilityOn ? Color.green : Color.orange)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("辅助功能")
-                            Text("读取选中的文字，并把改写或译文写回去。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        StatusPill(
-                            text: accessibilityOn ? "已开启" : "未开启",
-                            tint: accessibilityOn ? .green : .red
-                        )
-                        if !accessibilityOn {
-                            Button("去开启") {
-                                SelectionService.requestAccess()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+            SettingsSection(title: L10n.t("section.language")) {
+                languageRow(L10n.t("enhance.output"), caption: L10n.t("enhance.output.caption")) {
+                    Picker(L10n.t("enhance.output"), selection: $session.enhanceLanguage) {
+                        ForEach(AppSession.EnhanceLanguage.allCases) { item in
+                            Text(item.title).tag(item)
                         }
                     }
-                    .padding(12)
+                    .labelsHidden()
+                    .frame(width: 180)
                 }
+                SettingsHairline()
+                languageRow(L10n.t("translate.target"), caption: L10n.t("translate.target.caption")) {
+                    Picker(L10n.t("translate.target"), selection: $session.translateLanguage) {
+                        ForEach(TranslateLanguage.allCases) { language in
+                            Text(language.title).tag(language)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+            }
 
-                settingsBlock("选区") {
-                    VStack(alignment: .leading, spacing: 4) {
-                        toggleRow("选中文字后显示动作条", isOn: $session.selectionActionBarEnabled)
-                        Text("松开鼠标后，在选区右侧出现「改写 / 翻译」。关掉后只能把文字粘贴到面板里处理。")
+            SettingsSection(title: L10n.t("section.permissions")) {
+                HStack(alignment: .center, spacing: 10) {
+                    ColorTile(
+                        symbol: "accessibility",
+                        color: accessibilityOn ? Color(red: 0.18, green: 0.72, blue: 0.36) : Color.orange,
+                        size: 28
+                    )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.t("access.title"))
+                        Text(L10n.t("access.caption"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 10)
                     }
+                    Spacer()
+                    if !accessibilityOn {
+                        Button(L10n.t("access.enable")) {
+                            SelectionService.requestAccess()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    StatusPill(
+                        text: accessibilityOn ? L10n.t("access.on") : L10n.t("access.off"),
+                        tint: accessibilityOn ? .green : .orange
+                    )
                 }
+                .padding(16)
+            }
 
-                settingsBlock("桌面") {
-                    VStack(spacing: 0) {
-                        toggleRow("在程序坞显示图标", isOn: $session.showDockIcon) {
-                            windows.applyDockPreference()
-                        }
-                        Divider().opacity(0.12).padding(.leading, 12)
-                        toggleRow("面板始终置顶", isOn: $session.panelPinned) {
-                            windows.applyPanelPin()
-                        }
-                        Divider().opacity(0.12).padding(.leading, 12)
-                        toggleRow("改写后弹出结果窗", isOn: $session.enhancePopoverEnabled)
-                        Divider().opacity(0.12).padding(.leading, 12)
-                        VStack(alignment: .leading, spacing: 4) {
-                            toggleRow("点「改写」后立刻开始", isOn: $session.autoEnhanceOnShortcut)
-                            Text("关掉后，会先弹出窗口让你选风格再改写。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 12)
-                                .padding(.bottom, 10)
-                        }
+            SettingsSection(title: L10n.t("section.selection")) {
+                VStack(alignment: .leading, spacing: 4) {
+                    toggleRow(L10n.t("selection.actionBar"), isOn: $session.selectionActionBarEnabled)
+                    Text(L10n.t("selection.actionBar.caption"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                }
+            }
+
+            SettingsSection(title: L10n.t("section.desktop")) {
+                VStack(spacing: 0) {
+                    toggleRow(L10n.t("desktop.dock"), isOn: $session.showDockIcon) {
+                        windows.applyDockPreference()
+                    }
+                    SettingsHairline()
+                    toggleRow(L10n.t("desktop.pin"), isOn: $session.panelPinned) {
+                        windows.applyPanelPin()
+                    }
+                    SettingsHairline()
+                    toggleRow(L10n.t("desktop.popover"), isOn: $session.enhancePopoverEnabled)
+                    SettingsHairline()
+                    VStack(alignment: .leading, spacing: 4) {
+                        toggleRow(L10n.t("desktop.autoRun"), isOn: $session.autoEnhanceOnShortcut)
+                        Text(L10n.t("desktop.autoRun.caption"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
                     }
                 }
             }
-            .padding(.bottom, 12)
         }
     }
 
-    private func settingsBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 0) {
-                content()
+    private func languageRow<Control: View>(_ title: String, caption: String, @ViewBuilder control: () -> Control) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
-                    .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
-            )
+            Spacer()
+            control()
         }
+        .padding(16)
     }
 
     private func toggleRow(_ title: String, isOn: Binding<Bool>, onChange: @escaping () -> Void = {}) -> some View {
@@ -260,33 +240,29 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .toggleStyle(.switch)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
         .onChange(of: isOn.wrappedValue) { _, _ in onChange() }
     }
 
     private var profilesPage: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("内置风格可改说明。也可以自己加一套。")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                Text(L10n.t("profiles.title"))
+                    .font(.headline)
                 Spacer()
                 Button {
                     session.addCustomProfile()
                 } label: {
-                    Label("添加风格", systemImage: "plus")
+                    Label(L10n.t("profiles.add"), systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach($session.profiles) { $profile in
-                        profileCard($profile)
-                    }
+            LazyVStack(spacing: 8) {
+                ForEach($session.profiles) { $profile in
+                    profileCard($profile)
                 }
-                .padding(.bottom, 8)
             }
         }
     }
@@ -301,87 +277,110 @@ struct SettingsView: View {
                     .foregroundStyle(Color.accentColor)
                     .frame(width: 32, height: 32)
                     .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                TextField("名称", text: profile.name)
+                TextField(L10n.t("profiles.name"), text: profile.name)
                     .font(.headline)
                     .textFieldStyle(.plain)
                 Spacer()
                 if current {
-                    StatusPill(text: "当前", tint: Color.accentColor)
+                    StatusPill(text: L10n.t("profiles.current"), tint: Color.accentColor)
                 } else {
-                    Button("使用") { session.currentProfileID = profile.wrappedValue.id }
+                    Button(L10n.t("profiles.use")) { session.currentProfileID = profile.wrappedValue.id }
                         .controlSize(.small)
                 }
                 if !profile.wrappedValue.builtin {
-                    Button("删除", role: .destructive) {
+                    Button(L10n.t("profiles.delete"), role: .destructive) {
                         session.deleteProfile(profile.wrappedValue)
                     }
                     .controlSize(.small)
                 }
             }
-            TextField("给模型的说明", text: profile.systemPrompt, axis: .vertical)
+            TextField(L10n.t("profiles.prompt"), text: profile.systemPrompt, axis: .vertical)
                 .font(.callout)
                 .lineLimit(2...6)
                 .textFieldStyle(.plain)
                 .padding(8)
                 .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .padding(12)
+        .padding(14)
         .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
-                .strokeBorder(current ? Color.accentColor.opacity(0.28) : UIChrome.cardStroke, lineWidth: 1)
+                .strokeBorder(current ? Color.accentColor.opacity(0.35) : Color.clear, lineWidth: 1.5)
         )
     }
 
     private var appDefaultsPage: some View {
-        List {
-            ForEach(apps) { app in
-                HStack(spacing: 10) {
-                    Image(nsImage: AppsService.icon(for: app.path))
-                        .resizable()
-                        .frame(width: 28, height: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(app.name)
-                            .font(.body.weight(.medium))
-                        Text(app.bundleID)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Picker("风格", selection: ruleBinding(app.bundleID)) {
-                        Text("跟随当前风格").tag("")
-                        ForEach(session.profiles) { profile in
-                            Text(profile.name).tag(profile.id)
+        SettingsSection(title: L10n.t("nav.appDefaults")) {
+            VStack(spacing: 0) {
+                ForEach(Array(apps.enumerated()), id: \.element.id) { index, app in
+                    HStack(spacing: 10) {
+                        Image(nsImage: AppsService.icon(for: app.path))
+                            .resizable()
+                            .frame(width: 28, height: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(app.name)
+                                .font(.body.weight(.medium))
+                            Text(app.bundleID)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                        Spacer()
+                        Picker(L10n.t("appDefaults.profile"), selection: ruleBinding(app.bundleID)) {
+                            Text(L10n.t("appDefaults.follow")).tag("")
+                            ForEach(session.profiles) { profile in
+                                Text(profile.localizedName).tag(profile.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 160)
                     }
-                    .labelsHidden()
-                    .frame(width: 160)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    if index < apps.count - 1 {
+                        SettingsHairline()
+                    }
                 }
             }
         }
-        .scrollContentBackground(.hidden)
     }
 
     private var shortcutsPage: some View {
-        Form {
-            LabeledContent {
-                Text("选中后点按钮").font(.body)
-            } label: {
-                Label("改写 / 翻译", systemImage: "capsule")
+        VStack(alignment: .leading, spacing: 22) {
+            SettingsSection(title: L10n.t("shortcuts.title")) {
+                VStack(spacing: 0) {
+                    shortcutRow(L10n.t("shortcuts.chips"), caption: L10n.t("shortcuts.chips.caption"), keys: [L10n.t("shortcuts.select"), L10n.t("job.enhance")])
+                    SettingsHairline()
+                    shortcutRow(L10n.t("shortcuts.panel"), caption: L10n.t("shortcuts.panel.caption"), keys: ["⌘", "⇧", "U"])
+                }
             }
-            LabeledContent {
-                Text("⌘⇧U").font(.body.monospaced())
-            } label: {
-                Label("打开草稿面板", systemImage: "macwindow")
-            }
-            HowToStrip(shortcut: "改写或翻译", action: "点「替换」")
-            Text("在微信、备忘录里选中文字，右侧会出现改写 / 翻译。点按钮后，在浮层里替换或复制。")
+            HowToStrip(shortcut: L10n.t("howto.action"), action: L10n.t("howto.replace"))
+            Text(L10n.t("shortcuts.help"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+    }
+
+    private func shortcutRow(_ title: String, caption: String, keys: [String]) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            HStack(spacing: 4) {
+                ForEach(keys, id: \.self) { key in
+                    Text(key)
+                        .font(.caption.weight(.semibold).monospaced())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+            }
+        }
+        .padding(16)
     }
 
     private func ruleBinding(_ bundleID: String) -> Binding<String> {
@@ -405,5 +404,5 @@ struct SettingsView: View {
     SettingsView(model: SettingsModel())
         .environmentObject(AppSession())
         .environmentObject(AppWindows())
-        .frame(width: 1020, height: 700)
+        .frame(width: 860, height: 580)
 }

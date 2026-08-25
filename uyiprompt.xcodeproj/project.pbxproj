@@ -10,12 +10,18 @@
 		A21DC0010000000000000001 /* uyiprompt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = uyiprompt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A21DC0010000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A21DC0010000000000000003 /* uyiprompt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = uyiprompt.entitlements; sourceTree = "<group>"; };
+		A21DC0010000000000000101 /* uyipromptTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = uyipromptTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A21DC0010000000000000010 /* uyiprompt */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = uyiprompt;
+			sourceTree = "<group>";
+		};
+		A21DC0010000000000000110 /* uyipromptTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = uyipromptTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -35,6 +41,7 @@
 			isa = PBXGroup;
 			children = (
 				A21DC0010000000000000010 /* uyiprompt */,
+				A21DC0010000000000000110 /* uyipromptTests */,
 				A21DC0010000000000000032 /* Supporting */,
 				A21DC0010000000000000031 /* Products */,
 			);
@@ -44,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				A21DC0010000000000000001 /* uyiprompt.app */,
+				A21DC0010000000000000101 /* uyipromptTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -82,6 +90,27 @@
 			productReference = A21DC0010000000000000001 /* uyiprompt.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A21DC0010000000000000140 /* uyipromptTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A21DC0010000000000000150 /* Build configuration list for PBXNativeTarget "uyipromptTests" */;
+			buildPhases = (
+				A21DC0010000000000000141 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A21DC0010000000000000161 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A21DC0010000000000000110 /* uyipromptTests */,
+			);
+			name = uyipromptTests;
+			packageProductDependencies = (
+			);
+			productName = uyipromptTests;
+			productReference = A21DC0010000000000000101 /* uyipromptTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -94,6 +123,10 @@
 				TargetAttributes = {
 					A21DC0010000000000000040 = {
 						CreatedOnToolsVersion = 27.0;
+					};
+					A21DC0010000000000000140 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = A21DC0010000000000000040;
 					};
 				};
 			};
@@ -113,6 +146,7 @@
 			projectRoot = "";
 			targets = (
 				A21DC0010000000000000040 /* uyiprompt */,
+				A21DC0010000000000000140 /* uyipromptTests */,
 			);
 		};
 /* End PBXProject section */
@@ -135,7 +169,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A21DC0010000000000000141 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		A21DC0010000000000000160 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A21DC0010000000000000060 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A21DC0010000000000000040;
+			remoteInfo = uyiprompt;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		A21DC0010000000000000161 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A21DC0010000000000000040 /* uyiprompt */;
+			targetProxy = A21DC0010000000000000160 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A21DC0010000000000000062 /* Debug */ = {
@@ -228,6 +287,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -309,6 +369,48 @@
 			};
 			name = Release;
 		};
+		A21DC0010000000000000151 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3PQK775QT6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.uyiprompt.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/uyiprompt.app/Contents/MacOS/uyiprompt";
+			};
+			name = Debug;
+		};
+		A21DC0010000000000000152 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3PQK775QT6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.uyiprompt.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/uyiprompt.app/Contents/MacOS/uyiprompt";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -326,6 +428,15 @@
 			buildConfigurations = (
 				A21DC0010000000000000051 /* Debug */,
 				A21DC0010000000000000052 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A21DC0010000000000000150 /* Build configuration list for PBXNativeTarget "uyipromptTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A21DC0010000000000000151 /* Debug */,
+				A21DC0010000000000000152 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

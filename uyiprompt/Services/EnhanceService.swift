@@ -1,6 +1,6 @@
 import Foundation
 
-enum EnhanceError: LocalizedError {
+enum EnhanceError: LocalizedError, Equatable {
     case missingAPIKey
     case missingBaseURL
     case missingModel
@@ -13,30 +13,30 @@ enum EnhanceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return "还没有填 API Key。打开设置，选 DeepSeek 后贴上密钥即可。"
+            return L10n.t("error.missingKey")
         case .missingBaseURL:
-            return "还没有填接口地址。DeepSeek 一般是 https://api.deepseek.com/v1"
+            return L10n.t("error.missingURL")
         case .missingModel:
-            return "还没有填模型名。DeepSeek 常用 deepseek-v4-flash"
+            return L10n.t("error.missingModel")
         case .emptyInput:
-            return "先选中一段文字，再点弹出的「改写」或「翻译」"
+            return L10n.t("error.empty")
         case .tooLong:
-            return "文字太长了，最多 5 万字"
+            return L10n.t("error.tooLong")
         case .http(let code, let body):
             return friendlyHTTP(code, body)
         case .network(let message):
-            return message.isEmpty ? "网络不通，请检查网络后重试" : message
+            return message.isEmpty ? L10n.t("error.network") : message
         case .emptyResponse:
-            return "模型没有返回内容，请再试一次"
+            return L10n.t("error.emptyResponse")
         }
     }
 
     private func friendlyHTTP(_ code: Int, _ body: String) -> String {
-        if code == 401 || code == 403 { return "密钥无效或没权限，请到设置里核对 API Key" }
-        if code == 429 { return "请求太频繁或额度用完了，稍后再试" }
-        if code == 404 { return "接口地址或模型名可能不对，请检查 Base URL 和模型" }
-        if !body.isEmpty { return "服务返回错误（\(code)）：\(body)" }
-        return "服务返回错误（\(code)）"
+        if code == 401 || code == 403 { return L10n.t("error.http401") }
+        if code == 429 { return L10n.t("error.http429") }
+        if code == 404 { return L10n.t("error.http404") }
+        if !body.isEmpty { return L10n.format("error.httpBody", code, body) }
+        return L10n.format("error.http", code)
     }
 
     var popoverCode: String {
@@ -91,7 +91,7 @@ enum EnhanceService {
         if language == .auto {
             system += "\nKeep the original language of the text unless asked otherwise."
         } else {
-            system += "\nWrite the result in \(language.title)."
+            system += "\nWrite the result in \(language.promptName)."
         }
         if let codingTarget {
             system += "\n\(codingTarget)"
@@ -269,11 +269,11 @@ enum EnhanceService {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
-            throw EnhanceError.network("网络不通，请检查网络后重试")
+            throw EnhanceError.network("")
         }
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         if code == 0 {
-            throw EnhanceError.network("网络不通，请检查网络后重试")
+            throw EnhanceError.network("")
         }
         if !(200...299).contains(code) {
             var detail = String(data: data, encoding: .utf8) ?? ""

@@ -45,14 +45,21 @@ final class AppSession: ObservableObject {
 
         var title: String {
             switch self {
-            case .system: "跟随系统"
-            case .light: "浅色"
-            case .dark: "深色"
+            case .system: L10n.t("appearance.system")
+            case .light: L10n.t("appearance.light")
+            case .dark: L10n.t("appearance.dark")
             }
         }
     }
 
     @Published var appearance: AppearancePreference = .system { didSet { persistSoon() } }
+    @Published var uiLanguage: AppLanguage = .system {
+        didSet {
+            L10n.sync(uiLanguage)
+            persistSoon()
+            NotificationCenter.default.post(name: .uyiLanguageDidChange, object: nil)
+        }
+    }
     @Published var showDockIcon = false { didSet { persistSoon() } }
     @Published var panelPinned = true { didSet { persistSoon() } }
     @Published var enhancePopoverEnabled = true { didSet { persistSoon() } }
@@ -72,18 +79,33 @@ final class AppSession: ObservableObject {
 
         var id: String { rawValue }
 
+        var promptName: String {
+            switch self {
+            case .auto: "the original language"
+            case .english: "English"
+            case .chinese: "Simplified Chinese"
+            case .spanish: "Spanish"
+            case .portuguese: "Portuguese"
+            case .korean: "Korean"
+            case .indian: "Hindi"
+            case .russian: "Russian"
+            case .vietnamese: "Vietnamese"
+            case .czech: "Czech"
+            }
+        }
+
         var title: String {
             switch self {
-            case .auto: "自动（保持原文语言）"
-            case .english: "英语"
-            case .chinese: "中文"
-            case .spanish: "西班牙语"
-            case .portuguese: "葡萄牙语"
-            case .korean: "韩语"
-            case .indian: "印地语"
-            case .russian: "俄语"
-            case .vietnamese: "越南语"
-            case .czech: "捷克语"
+            case .auto: L10n.t("lang.autoKeep")
+            case .english: L10n.t("lang.english")
+            case .chinese: L10n.t("lang.chinese")
+            case .spanish: L10n.t("lang.spanish")
+            case .portuguese: L10n.t("lang.portuguese")
+            case .korean: L10n.t("lang.korean")
+            case .indian: L10n.t("lang.hindi")
+            case .russian: L10n.t("lang.russian")
+            case .vietnamese: L10n.t("lang.vietnamese")
+            case .czech: L10n.t("lang.czech")
             }
         }
     }
@@ -103,8 +125,8 @@ final class AppSession: ObservableObject {
     func addCustomProfile() {
         let profile = WritingProfile(
             id: "custom-\(UUID().uuidString)",
-            name: "新风格",
-            systemPrompt: "按用户意图改写这段文字，保留原文语言和关键事实。",
+            name: L10n.t("profiles.newName"),
+            systemPrompt: L10n.t("profiles.newPrompt"),
             builtin: false
         )
         profiles.append(profile)
@@ -126,6 +148,7 @@ final class AppSession: ObservableObject {
 
     init() {
         load()
+        L10n.sync(uiLanguage)
         isLoading = false
         migrateBuiltinNames()
         migrateRetiredModels()
@@ -198,6 +221,7 @@ final class AppSession: ObservableObject {
         var enhanceLanguage: EnhanceLanguage?
         var translateLanguage: TranslateLanguage?
         var appProfileRules: [String: String]?
+        var uiLanguage: AppLanguage?
     }
 
     private func load() {
@@ -218,6 +242,8 @@ final class AppSession: ObservableObject {
         enhanceLanguage = snapshot.enhanceLanguage ?? .auto
         translateLanguage = snapshot.translateLanguage ?? .auto
         appProfileRules = snapshot.appProfileRules ?? [:]
+        uiLanguage = snapshot.uiLanguage ?? .system
+        L10n.sync(uiLanguage)
     }
 
     private func write() {
@@ -234,7 +260,8 @@ final class AppSession: ObservableObject {
             llm: llm,
             enhanceLanguage: enhanceLanguage,
             translateLanguage: translateLanguage,
-            appProfileRules: appProfileRules
+            appProfileRules: appProfileRules,
+            uiLanguage: uiLanguage
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         do {

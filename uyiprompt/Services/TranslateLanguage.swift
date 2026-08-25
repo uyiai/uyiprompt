@@ -6,8 +6,8 @@ enum SelectionJob: String, Equatable, Hashable, Sendable {
 
     var verb: String {
         switch self {
-        case .enhance: "改写"
-        case .translate: "翻译"
+        case .enhance: L10n.t("job.enhance")
+        case .translate: L10n.t("job.translate")
         }
     }
 }
@@ -29,33 +29,33 @@ enum TranslateLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
 
     var title: String {
         switch self {
-        case .auto: "自动（中英互译）"
-        case .chinese: "简体中文"
-        case .english: "英语"
-        case .japanese: "日语"
-        case .korean: "韩语"
-        case .french: "法语"
-        case .german: "德语"
-        case .spanish: "西班牙语"
-        case .portuguese: "葡萄牙语"
-        case .russian: "俄语"
-        case .vietnamese: "越南语"
+        case .auto: L10n.t("lang.autoPair")
+        case .chinese: L10n.t("lang.simplified")
+        case .english: L10n.t("lang.english")
+        case .japanese: L10n.t("lang.japanese")
+        case .korean: L10n.t("lang.korean")
+        case .french: L10n.t("lang.french")
+        case .german: L10n.t("lang.german")
+        case .spanish: L10n.t("lang.spanish")
+        case .portuguese: L10n.t("lang.portuguese")
+        case .russian: L10n.t("lang.russian")
+        case .vietnamese: L10n.t("lang.vietnamese")
         }
     }
 
     var shortTitle: String {
         switch self {
-        case .auto: "自动"
-        case .chinese: "中文"
-        case .english: "英语"
-        case .japanese: "日语"
-        case .korean: "韩语"
-        case .french: "法语"
-        case .german: "德语"
-        case .spanish: "西语"
-        case .portuguese: "葡语"
-        case .russian: "俄语"
-        case .vietnamese: "越南语"
+        case .auto: L10n.t("lang.auto")
+        case .chinese: L10n.t("lang.chinese")
+        case .english: L10n.t("lang.english")
+        case .japanese: L10n.t("lang.japanese")
+        case .korean: L10n.t("lang.korean")
+        case .french: L10n.t("lang.french")
+        case .german: L10n.t("lang.german")
+        case .spanish: L10n.t("lang.esShort")
+        case .portuguese: L10n.t("lang.ptShort")
+        case .russian: L10n.t("lang.russian")
+        case .vietnamese: L10n.t("lang.vietnamese")
         }
     }
 
@@ -122,10 +122,10 @@ enum TranslateLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
             return "→\(resolved.shortTitle)"
         }
         switch guess(text) {
-        case .chinese: return "中→英"
-        case .japanese: return "日→中"
-        case .korean: return "韩→中"
-        case .latin: return "→中"
+        case .chinese: return L10n.t("route.zhEn")
+        case .japanese: return L10n.t("route.jaZh")
+        case .korean: return L10n.t("route.koZh")
+        case .latin: return L10n.t("route.toZh")
         }
     }
 }

@@ -1,7 +1,7 @@
 import CoreGraphics
 
 enum WindowMetrics {
-    static let windowCorner: CGFloat = 14
+    static let windowCorner: CGFloat = 16
     static let panelSize = CGSize(width: 380, height: 400)
     static let panelMinSize = CGSize(width: 360, height: 380)
 
@@ -11,10 +11,10 @@ enum WindowMetrics {
     static let popoverCursorOffset = CGPoint(x: 12, y: -16)
     static let popoverEdgeGap: CGFloat = 8
 
-    static let actionBarSize = CGSize(width: 168, height: 40)
+    static let actionBarSize = CGSize(width: 168, height: 38)
 
-    static let settingsSignedIn = CGSize(width: 1020, height: 700)
-    static let settingsSignedOut = CGSize(width: 700, height: 580)
+    static let settingsSignedIn = CGSize(width: 860, height: 580)
+    static let settingsSignedOut = CGSize(width: 700, height: 520)
 
     static let onboardingPreferred = CGSize(width: 680, height: 640)
     static let onboardingMin = CGSize(width: 520, height: 500)

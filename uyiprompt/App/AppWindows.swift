@@ -48,6 +48,10 @@ final class AppWindows: ObservableObject {
         coordinator.runCaptured(text: text, bundleID: bundleID, job: job, near: point)
     }
 
+    func rewriteDraft(_ text: String, job: SelectionJob) async throws -> String {
+        try await RewritePipeline.transform(message: text, job: job, session: session)
+    }
+
     func invalidateSelectionWatcher() {
         selectionWatcher.invalidate()
     }

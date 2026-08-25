@@ -17,13 +17,9 @@ struct SetupBanner: View {
             Button(actionTitle, action: action)
                 .controlSize(.small)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: UIChrome.radiusSmall, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: UIChrome.radiusSmall, style: .continuous)
-                .strokeBorder(Color.orange.opacity(0.18), lineWidth: 1)
-        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -43,12 +39,12 @@ struct ShortcutChip: View {
 }
 
 struct HowToStrip: View {
-    var shortcut: String = "改写或翻译"
-    var action: String = "点「替换」"
+    var shortcut: String = L10n.t("howto.action")
+    var action: String = L10n.t("howto.replace")
 
     var body: some View {
         HStack(spacing: 10) {
-            HowToStep(symbol: "character.cursor.ibeam", title: "选中文字")
+            HowToStep(symbol: "character.cursor.ibeam", title: L10n.t("howto.select"))
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -58,9 +54,9 @@ struct HowToStrip: View {
                 .foregroundStyle(.tertiary)
             HowToStep(symbol: "arrow.uturn.forward", title: action)
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
     }
 }
 
@@ -139,9 +135,9 @@ struct MenuBarHintView: View {
         HStack(alignment: .top, spacing: 10) {
             AppMark(size: 32)
             VStack(alignment: .leading, spacing: 2) {
-                Text("已经放到菜单栏")
+                Text(L10n.t("hint.menubar"))
                     .font(.headline)
-                Text("选中文字后点「改写」或「翻译」")
+                Text(L10n.t("hint.action"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

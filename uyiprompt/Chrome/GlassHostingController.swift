@@ -4,23 +4,34 @@ import SwiftUI
 /// Puts SwiftUI on top of `NSVisualEffectView` so the desktop behind the window
 /// actually blurs. CSS/`backdrop-filter` cannot do this; Electron wrapped the
 /// same AppKit view.
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+}
+
 @MainActor
 final class GlassHostingController<Content: View>: NSViewController {
     private let rootView: Content
     private let material: NSVisualEffectView.Material
+    private let blending: NSVisualEffectView.BlendingMode
     private let emphasized: Bool
     private let cornerRadius: CGFloat
+    private let firstMouse: Bool
 
     init(
         rootView: Content,
         material: NSVisualEffectView.Material = .hudWindow,
+        blending: NSVisualEffectView.BlendingMode = .withinWindow,
         emphasized: Bool = true,
-        cornerRadius: CGFloat = 0
+        cornerRadius: CGFloat = 0,
+        firstMouse: Bool = false
     ) {
         self.rootView = rootView
         self.material = material
+        self.blending = blending
         self.emphasized = emphasized
         self.cornerRadius = cornerRadius
+        self.firstMouse = firstMouse
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -32,7 +43,7 @@ final class GlassHostingController<Content: View>: NSViewController {
     override func loadView() {
         let visualEffectView = NSVisualEffectView()
         visualEffectView.material = material
-        visualEffectView.blendingMode = .withinWindow
+        visualEffectView.blendingMode = blending
         visualEffectView.state = emphasized ? .active : .followsWindowActiveState
         visualEffectView.isEmphasized = emphasized
         if cornerRadius > 0 {
@@ -40,7 +51,9 @@ final class GlassHostingController<Content: View>: NSViewController {
             visualEffectView.layer?.cornerRadius = cornerRadius
             visualEffectView.layer?.masksToBounds = true
         }
-        let hosted = NSHostingView(rootView: rootView)
+        let hosted: NSHostingView<Content> = firstMouse
+            ? FirstMouseHostingView(rootView: rootView)
+            : NSHostingView(rootView: rootView)
         hosted.sizingOptions = []
         hosted.translatesAutoresizingMaskIntoConstraints = false
         visualEffectView.addSubview(hosted)
@@ -133,14 +146,16 @@ enum ProductWindowFactory {
             defer: false
         )
         configureGlass(window)
-        window.title = "设置"
+        window.title = L10n.t("window.settings")
         window.identifier = NSUserInterfaceItemIdentifier("uyiprompt.settings")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
-        window.minSize = CGSize(width: 900, height: 620)
+        window.minSize = CGSize(width: 760, height: 500)
         window.toolbarStyle = .unified
         window.level = .floating
+        window.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.92)
+        disableMaximize(window)
         return window
     }
 
@@ -152,7 +167,7 @@ enum ProductWindowFactory {
             backing: .buffered,
             defer: false
         )
-        window.title = "欢迎"
+        window.title = L10n.t("window.welcome")
         window.identifier = NSUserInterfaceItemIdentifier("uyiprompt.onboarding")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
@@ -163,7 +178,15 @@ enum ProductWindowFactory {
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         window.level = .floating
+        disableMaximize(window)
         return window
+    }
+
+    /// Superwhisper-style: close and minimize only. No zoom / full screen.
+    static func disableMaximize(_ window: NSWindow) {
+        window.collectionBehavior.insert(.fullScreenNone)
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isEnabled = false
     }
 
     private static func configureGlass(_ window: NSWindow) {
@@ -214,12 +237,10 @@ enum ProductWindowFactory {
     }
 
     static func present(_ window: NSWindow, size: CGSize? = nil, on screen: NSScreen? = nil) {
-        window.setFrame(clampedFrame(size ?? window.frame.size, on: screen), display: true)
-        window.isReleasedWhenClosed = false
-        window.hidesOnDeactivate = false
-        NSApp.activate()
-        window.orderFrontRegardless()
-        window.makeKeyAndOrderFront(nil)
-        NSLog("[uyiprompt] present frame=%@ visible=%@", NSStringFromRect(window.frame), window.isVisible ? "yes" : "no")
+        WindowPresentation.show(
+            window,
+            policy: .key,
+            frame: clampedFrame(size ?? window.frame.size, on: screen)
+        )
     }
 }

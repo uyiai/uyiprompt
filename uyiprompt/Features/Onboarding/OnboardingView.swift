@@ -30,11 +30,11 @@ struct OnboardingView: View {
 
             HStack {
                 if step == 0 {
-                    Button("稍后再说") { windows.completeOnboarding() }
+                    Button(L10n.t("onboard.later")) { windows.completeOnboarding() }
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                 } else {
-                    Button("上一步") { step = max(0, step - 1) }
+                    Button(L10n.t("onboard.back")) { step = max(0, step - 1) }
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                 }
@@ -57,7 +57,8 @@ struct OnboardingView: View {
             minHeight: WindowMetrics.onboardingMin.height
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(UIChrome.canvasFill)
+        .id(session.uiLanguage)
         .onAppear { accessibilityOn = SelectionService.isTrusted }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             accessibilityOn = SelectionService.isTrusted
@@ -66,63 +67,73 @@ struct OnboardingView: View {
 
     private var primaryTitle: String {
         switch step {
-        case 2: session.llm.isReady ? "开始使用" : "先放到菜单栏"
-        default: "继续"
+        case 2: session.llm.isReady ? L10n.t("onboard.start") : L10n.t("onboard.menubar")
+        default: L10n.t("onboard.continue")
         }
     }
 
     private var welcome: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 22) {
             Spacer(minLength: 8)
-            AppMark(size: 64)
-            Text("选中文字，改写或翻译")
-                .font(.largeTitle.weight(.semibold))
-            Text("待在菜单栏。选中一段话，右侧点「改写」或「翻译」，再点「替换」写回去。")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 440)
-            HStack(spacing: 10) {
-                featureChip(symbol: "pencil.and.outline", title: "改写")
-                featureChip(symbol: "globe", title: "翻译")
-                featureChip(symbol: "arrow.uturn.forward", title: "写回原文")
+            VStack(alignment: .leading, spacing: 8) {
+                ColorTile(symbol: "pencil.and.outline", color: Color(red: 0.20, green: 0.48, blue: 1.00), size: 36)
+                Text(L10n.t("onboard.welcome.title"))
+                    .font(.title.weight(.semibold))
+                Text(L10n.t("onboard.welcome.caption"))
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.top, 4)
+            Picker(L10n.t("language.section"), selection: $session.uiLanguage) {
+                ForEach(AppLanguage.allCases) { item in
+                    Text(item.pickerTitle).tag(item)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 280)
+            VStack(alignment: .leading, spacing: 16) {
+                getStartedRow(symbol: "character.cursor.ibeam", color: Color(red: 0.20, green: 0.48, blue: 1.00), title: L10n.t("onboard.step1.title"), caption: L10n.t("onboard.step1.caption"))
+                getStartedRow(symbol: "pencil.line", color: Color(red: 0.18, green: 0.40, blue: 0.95), title: L10n.t("onboard.step2.title"), caption: L10n.t("onboard.step2.caption"))
+                getStartedRow(symbol: "arrow.uturn.forward", color: Color(red: 0.18, green: 0.72, blue: 0.36), title: L10n.t("onboard.step3.title"), caption: L10n.t("onboard.step3.caption"))
+            }
             Spacer(minLength: 8)
         }
-        .padding(.horizontal, 32)
+        .padding(.horizontal, 40)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
     }
 
-    private func featureChip(symbol: String, title: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .foregroundStyle(Color.accentColor)
-            Text(title)
-                .font(.callout.weight(.medium))
+    private func getStartedRow(symbol: String, color: Color, title: String, caption: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ColorTile(symbol: symbol, color: color, size: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                Text(caption)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(Color.primary.opacity(0.05), in: Capsule())
     }
 
     private var access: some View {
         VStack(spacing: 16) {
             Spacer(minLength: 8)
             IconBadge(symbol: "accessibility", size: 64)
-            Text("需要「辅助功能」")
+            Text(L10n.t("onboard.access.title"))
                 .font(.largeTitle.weight(.semibold))
-            Text("这样才能读到你选中的字，并把结果粘贴回去。只在你选中文字时工作，可以稍后开启。")
+            Text(L10n.t("onboard.access.caption"))
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 460)
-            Text(accessibilityOn ? "已经开启，可以继续" : "还没开启，点下面会跳到系统设置")
+            Text(accessibilityOn ? L10n.t("onboard.access.ok") : L10n.t("onboard.access.need"))
                 .foregroundStyle(accessibilityOn ? Color.green : Color.secondary)
             if !accessibilityOn {
                 Button {
                     SelectionService.requestAccess()
                 } label: {
-                    Label("打开系统设置", systemImage: "gearshape")
+                    Label(L10n.t("onboard.access.open"), systemImage: "gearshape")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -135,11 +146,11 @@ struct OnboardingView: View {
     private var modelStep: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("连接模型")
+                Text(L10n.t("onboard.model.title"))
                     .font(.title.weight(.semibold))
                 Text(session.llm.isReady
-                     ? "已经连上了，可以直接开始。也可以换成 DeepSeek。"
-                     : "推荐 DeepSeek。密钥只存在这台电脑，不会上传到我们这边。")
+                     ? L10n.t("onboard.model.ready")
+                     : L10n.t("onboard.model.need"))
                     .font(.title3)
                     .foregroundStyle(.secondary)
                 ModelSetupCard(provider: session.llm.activeProvider, compact: true, showProviderPicker: true)

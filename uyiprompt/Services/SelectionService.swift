@@ -20,8 +20,7 @@ struct SelectionPasteResult {
 @MainActor
 enum SelectionService {
     static let ownBundleIDs: Set<String> = ["app.uyiprompt"]
-    static let accessDeniedMessage =
-        "辅助功能开关对不上当前这份程序。请到系统设置 → 隐私与安全性 → 辅助功能：删掉旧的 uyiprompt，再把「应用程序」里的 uyiprompt 拖进去打开。"
+    static var accessDeniedMessage: String { L10n.t("error.access") }
 
     static var isTrusted: Bool {
         AXIsProcessTrusted()
@@ -112,7 +111,7 @@ enum SelectionService {
             _ = activate(bundleID: bundleID)
             let front = await waitUntilFrontmost(bundleID)
             if !front {
-                return SelectionPasteResult(ok: false, accessibilityDenied: false, error: "请切回原来的软件再试一次")
+                return SelectionPasteResult(ok: false, accessibilityDenied: false, error: L10n.t("error.switchApp"))
             }
         }
 

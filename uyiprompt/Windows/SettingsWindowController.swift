@@ -12,11 +12,11 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .providers: "模型服务"
-        case .general: "通用"
-        case .profiles: "写作风格"
-        case .appDefaults: "按应用"
-        case .shortcuts: "快捷键"
+        case .providers: L10n.t("nav.providers")
+        case .general: L10n.t("nav.general")
+        case .profiles: L10n.t("nav.profiles")
+        case .appDefaults: L10n.t("nav.appDefaults")
+        case .shortcuts: L10n.t("nav.shortcuts")
         }
     }
 
@@ -32,11 +32,21 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .providers: "cpu"
-        case .general: "slider.horizontal.3"
-        case .profiles: "text.book.closed"
-        case .appDefaults: "square.grid.2x2"
-        case .shortcuts: "keyboard"
+        case .providers: "cpu.fill"
+        case .general: "gearshape.fill"
+        case .profiles: "book.fill"
+        case .appDefaults: "square.grid.2x2.fill"
+        case .shortcuts: "keyboard.fill"
+        }
+    }
+
+    var tileColor: Color {
+        switch self {
+        case .providers: Color(red: 0.20, green: 0.48, blue: 1.00)
+        case .general: Color(red: 0.22, green: 0.22, blue: 0.24)
+        case .profiles: Color(red: 0.18, green: 0.40, blue: 0.95)
+        case .appDefaults: Color(red: 0.45, green: 0.33, blue: 0.96)
+        case .shortcuts: Color(red: 0.96, green: 0.52, blue: 0.18)
         }
     }
 }
@@ -60,6 +70,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         let window = ensureWindow()
         applyMode()
+        window.title = L10n.t("window.settings")
         ProductWindowFactory.present(window, size: WindowMetrics.settingsSignedIn)
     }
 
@@ -67,7 +78,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         guard let window else { return }
         window.setContentSize(WindowMetrics.settingsSignedIn)
         window.styleMask.insert(.resizable)
-        window.minSize = CGSize(width: 900, height: 620)
+        window.minSize = CGSize(width: 760, height: 500)
     }
 
     private func ensureWindow() -> NSWindow {
@@ -81,10 +92,17 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         created.contentViewController = GlassHostingController(
             rootView: SettingsView(model: model)
                 .environmentObject(session)
-                .environmentObject(windows)
+                .environmentObject(windows),
+            material: .underWindowBackground,
+            blending: .withinWindow,
+            emphasized: false
         )
         window = created
         return created
+    }
+
+    func windowShouldZoom(_ window: NSWindow, toFrame newFrame: NSRect) -> Bool {
+        false
     }
 
     func windowWillClose(_ notification: Notification) {

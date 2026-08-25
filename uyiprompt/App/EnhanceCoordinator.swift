@@ -52,8 +52,8 @@ final class EnhanceCoordinator {
         if !session.llm.isReady {
             windows.showPopover(
                 state: .error(
-                    EnhanceError.missingAPIKey.errorDescription ?? "还没有填 API Key",
-                    profile: job == .translate ? "翻译" : session.currentProfile.name,
+                    EnhanceError.missingAPIKey.errorDescription ?? L10n.t("error.missingKey"),
+                    profile: job == .translate ? L10n.t("job.translate") : session.currentProfile.localizedName,
                     job: job,
                     translateLanguage: session.translateLanguage
                 ),
@@ -116,7 +116,7 @@ final class EnhanceCoordinator {
             if result.accessibilityDenied {
                 windows?.showPopover(
                     state: .error(
-                        "还写不回去：辅助功能对不上当前程序。可以先点「复制」。",
+                        L10n.t("error.pasteAccess"),
                         profile: label(for: capture),
                         original: capture.originalText,
                         job: capture.job,
@@ -128,7 +128,7 @@ final class EnhanceCoordinator {
             } else if !result.ok {
                 windows?.showPopover(
                     state: .error(
-                        result.error ?? "没能粘贴回去",
+                        result.error ?? L10n.t("error.pasteFail"),
                         profile: label(for: capture),
                         original: capture.originalText,
                         job: capture.job,
@@ -149,7 +149,7 @@ final class EnhanceCoordinator {
         prefilledText: String? = nil,
         bundleID: String? = nil
     ) async {
-        let fallbackName = job == .translate ? "翻译" : session.currentProfile.name
+        let fallbackName = job == .translate ? L10n.t("job.translate") : session.currentProfile.localizedName
         if !SelectionService.isTrusted {
             SelectionService.promptForAccessibility()
             windows.showPopover(
@@ -179,7 +179,7 @@ final class EnhanceCoordinator {
                     windows.showPopover(state: state(from: capture, session: session, status: .ready), near: anchor)
                 } else {
                     windows.showPopover(
-                        state: .error("请先在别的软件里选中文字", profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
+                        state: .error(L10n.t("error.selectOther"), profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
                         near: anchor
                     )
                 }
@@ -207,7 +207,7 @@ final class EnhanceCoordinator {
         let text = captured.text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty {
             windows.showPopover(
-                state: .error("没读到选中的文字，再选一次试试", profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
+                state: .error(L10n.t("error.noSelection"), profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
                 near: anchor
             )
             return
@@ -268,26 +268,14 @@ final class EnhanceCoordinator {
         anchor: NSPoint,
         silent: Bool
     ) async {
-        let profile = session.profiles.first(where: { $0.id == capture.profileID }) ?? session.currentProfile
         do {
-            let result: String
-            switch capture.job {
-            case .enhance:
-                let coding = profile.id == "code" ? CodingTarget.extraPrompt(for: capture.bundleID) : nil
-                result = try await EnhanceService.enhance(
-                    message: capture.originalText,
-                    profilePrompt: profile.systemPrompt,
-                    settings: session.llm,
-                    language: session.enhanceLanguage,
-                    codingTarget: coding
-                )
-            case .translate:
-                result = try await EnhanceService.translate(
-                    message: capture.originalText,
-                    settings: session.llm,
-                    language: capture.translateLanguage
-                )
-            }
+            let result = try await RewritePipeline.transform(
+                message: capture.originalText,
+                job: capture.job,
+                session: session,
+                bundleID: capture.bundleID,
+                profileID: capture.profileID
+            )
             guard gen == generation else { return }
             var stored = capture
             stored.enhancedText = result
@@ -297,7 +285,7 @@ final class EnhanceCoordinator {
                 if !paste.ok {
                     windows.showPopover(
                         state: .error(
-                            paste.error ?? "没能粘贴回去",
+                            paste.error ?? L10n.t("error.pasteFail"),
                             profile: label(for: stored, session: session),
                             profileId: stored.profileID,
                             original: stored.originalText,
@@ -328,11 +316,11 @@ final class EnhanceCoordinator {
     }
 
     private func label(for capture: CaptureSession, session: AppSession? = nil) -> String {
-        if capture.job == .translate { return "翻译" }
+        if capture.job == .translate { return L10n.t("job.translate") }
         let session = session ?? self.session
-        return session?.profiles.first(where: { $0.id == capture.profileID })?.name
-            ?? session?.currentProfile.name
-            ?? "校对"
+        return session?.profiles.first(where: { $0.id == capture.profileID })?.localizedName
+            ?? session?.currentProfile.localizedName
+            ?? L10n.t("profile.grammar")
     }
 
     private func state(from capture: CaptureSession, session: AppSession, status: PopoverContentState.Status) -> PopoverContentState {
@@ -340,7 +328,7 @@ final class EnhanceCoordinator {
         return PopoverContentState(
             status: status,
             profileId: capture.profileID,
-            profileName: capture.job == .translate ? "翻译" : profile.name,
+            profileName: capture.job == .translate ? L10n.t("job.translate") : profile.localizedName,
             originalText: capture.originalText,
             enhancedText: capture.enhancedText,
             error: "",

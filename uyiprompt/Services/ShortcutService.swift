@@ -8,7 +8,7 @@ import Carbon.HIToolbox
 /// isolated to `MainActor`.
 final class ShortcutService: @unchecked Sendable {
     private var eventHandler: EventHandlerRef?
-    private var hotKeys: [EventHotKeyRef?] = []
+    private var hotKeys: [EventHotKeyRef] = []
     private weak var windows: AppWindows?
 
     @MainActor
@@ -19,18 +19,23 @@ final class ShortcutService: @unchecked Sendable {
     }
 
     func invalidate() {
+        for hotKey in hotKeys {
+            UnregisterEventHotKey(hotKey)
+        }
+        hotKeys.removeAll()
         if let eventHandler {
             RemoveEventHandler(eventHandler)
             self.eventHandler = nil
         }
-        hotKeys.removeAll()
     }
 
     private func register(keyCode: UInt32, actionID: UInt32) {
         var hotKeyRef: EventHotKeyRef?
         var hotKeyID = EventHotKeyID(signature: OSType(0x55594950), id: actionID)
-        RegisterEventHotKey(keyCode, UInt32(cmdKey + shiftKey), hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
-        hotKeys.append(hotKeyRef)
+        let status = RegisterEventHotKey(keyCode, UInt32(cmdKey + shiftKey), hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        if status == noErr, let hotKeyRef {
+            hotKeys.append(hotKeyRef)
+        }
     }
 
     private func installHandler() {

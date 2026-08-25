@@ -8,8 +8,8 @@ enum ResultViewMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .changes: "改动"
-        case .edit: "结果"
+        case .changes: L10n.t("result.changes")
+        case .edit: L10n.t("result.edit")
         }
     }
 

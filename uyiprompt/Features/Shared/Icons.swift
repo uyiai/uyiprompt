@@ -1,11 +1,28 @@
+import AppKit
 import SwiftUI
 
 enum UIChrome {
-    static let radius: CGFloat = 12
-    static let radiusSmall: CGFloat = 8
-    static let cardFill = Color.primary.opacity(0.045)
-    static let cardStroke = Color.primary.opacity(0.06)
-    static let sidebarFill = Color.primary.opacity(0.035)
+    static let radius: CGFloat = 16
+    static let radiusSmall: CGFloat = 10
+    static let navRadius: CGFloat = 10
+    static let sidebarWidth: CGFloat = 176
+    static var cardFill: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? NSColor(white: 0.22, alpha: 1)
+                : NSColor.white
+        })
+    }
+    static var canvasFill: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? NSColor(white: 0.14, alpha: 1)
+                : NSColor(white: 0.93, alpha: 1)
+        })
+    }
+    static let cardStroke = Color.primary.opacity(0.04)
+    static let sidebarFill = Color.clear
+    static var hairline: Color { Color.primary.opacity(0.08) }
 }
 
 struct SurfaceCard<Content: View>: View {
@@ -17,10 +34,47 @@ struct SurfaceCard<Content: View>: View {
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous)
-                    .strokeBorder(UIChrome.cardStroke, lineWidth: 1)
-            )
+    }
+}
+
+struct SettingsSection<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .padding(.horizontal, 4)
+            VStack(alignment: .leading, spacing: 0) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(UIChrome.cardFill, in: RoundedRectangle(cornerRadius: UIChrome.radius, style: .continuous))
+        }
+    }
+}
+
+struct SettingsHairline: View {
+    var body: some View {
+        Rectangle()
+            .fill(UIChrome.hairline)
+            .frame(height: 0.5)
+            .padding(.leading, 16)
+    }
+}
+
+struct ColorTile: View {
+    let symbol: String
+    var color: Color = .accentColor
+    var size: CGFloat = 22
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.46, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(color, in: RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
     }
 }
 
@@ -127,33 +181,103 @@ struct ProviderIcon: View {
 struct SettingsNavRow: View {
     let title: String
     let symbol: String
+    var color: Color = .accentColor
     let selected: Bool
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Image(systemName: symbol)
-                    .font(.body.weight(.medium))
-                    .symbolVariant(selected ? .fill : .none)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-                    .frame(width: 22)
+                ColorTile(symbol: symbol, color: color, size: 22)
                 Text(title)
                     .font(.body.weight(selected ? .semibold : .regular))
+                    .foregroundStyle(.primary)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             .background(
-                selected ? Color.primary.opacity(0.08) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                selected ? UIChrome.cardFill : Color.clear,
+                in: RoundedRectangle(cornerRadius: UIChrome.navRadius, style: .continuous)
             )
+            .shadow(color: selected ? Color.black.opacity(0.08) : .clear, radius: 8, y: 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+struct AppearanceChooser: View {
+    @Binding var selection: AppSession.AppearancePreference
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(AppSession.AppearancePreference.allCases) { item in
+                Button {
+                    selection = item
+                } label: {
+                    VStack(spacing: 6) {
+                        AppearanceThumbnail(preference: item)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(
+                                        selection == item ? Color.accentColor : Color.primary.opacity(0.12),
+                                        lineWidth: selection == item ? 2 : 1
+                                    )
+                            )
+                        Text(item.title)
+                            .font(.caption)
+                            .foregroundStyle(selection == item ? .primary : .secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+private struct AppearanceThumbnail: View {
+    let preference: AppSession.AppearancePreference
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(sky)
+            VStack(spacing: 0) {
+                HStack(spacing: 3) {
+                    Circle().fill(Color.red.opacity(0.85)).frame(width: 5, height: 5)
+                    Circle().fill(Color.yellow.opacity(0.85)).frame(width: 5, height: 5)
+                    Circle().fill(Color.green.opacity(0.85)).frame(width: 5, height: 5)
+                    Spacer(minLength: 0)
+                }
+                .padding(5)
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(pane)
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 6)
+            }
+        }
+        .frame(width: 64, height: 44)
+    }
+
+    private var sky: LinearGradient {
+        switch preference {
+        case .system:
+            LinearGradient(colors: [Color(red: 0.45, green: 0.62, blue: 0.92), Color(red: 0.78, green: 0.86, blue: 0.96)], startPoint: .top, endPoint: .bottom)
+        case .light:
+            LinearGradient(colors: [Color(red: 0.72, green: 0.84, blue: 0.96), Color(red: 0.93, green: 0.95, blue: 0.98)], startPoint: .top, endPoint: .bottom)
+        case .dark:
+            LinearGradient(colors: [Color(red: 0.10, green: 0.16, blue: 0.32), Color(red: 0.16, green: 0.18, blue: 0.28)], startPoint: .top, endPoint: .bottom)
+        }
+    }
+
+    private var pane: Color {
+        switch preference {
+        case .dark: Color.white.opacity(0.12)
+        default: Color.white.opacity(0.86)
+        }
     }
 }
 

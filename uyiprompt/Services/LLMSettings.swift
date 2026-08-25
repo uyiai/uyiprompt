@@ -13,16 +13,16 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
         case .deepseek: "DeepSeek"
         case .openai: "OpenAI"
         case .moonshot: "Kimi"
-        case .custom: "自定义"
+        case .custom: L10n.t("provider.custom")
         }
     }
 
     var caption: String {
         switch self {
-        case .deepseek: "推荐 · 国内直连"
-        case .openai: "官方接口"
-        case .moonshot: "月之暗面"
-        case .custom: "OpenAI 兼容"
+        case .deepseek: L10n.t("provider.deepseek.caption")
+        case .openai: L10n.t("provider.openai.caption")
+        case .moonshot: L10n.t("provider.moonshot.caption")
+        case .custom: L10n.t("provider.custom.caption")
         }
     }
 
@@ -46,10 +46,10 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
 
     var helpText: String {
         switch self {
-        case .deepseek: "打开 DeepSeek 开放平台，创建 API Key 后粘贴过来。"
-        case .openai: "打开 OpenAI 的 API keys 页面，创建密钥后粘贴过来。"
-        case .moonshot: "打开 Moonshot 开放平台，创建 API Key 后粘贴过来。"
-        case .custom: "填接口地址、密钥和模型名。需要兼容 OpenAI 的 /v1/chat/completions。"
+        case .deepseek: L10n.t("provider.deepseek.help")
+        case .openai: L10n.t("provider.openai.help")
+        case .moonshot: L10n.t("provider.moonshot.help")
+        case .custom: L10n.t("provider.custom.help")
         }
     }
 
@@ -81,20 +81,20 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
 
     func displayName(for model: String) -> String {
         switch model {
-        case "deepseek-v4-flash": "Flash · 快"
-        case "deepseek-v4-pro": "Pro · 强"
-        case "deepseek-chat": "Flash（旧名）"
-        case "deepseek-reasoner": "思考（旧名）"
-        case "gpt-5.6-luna": "Luna · 快省"
-        case "gpt-5.6-terra": "Terra · 均衡"
-        case "gpt-5.6-sol": "Sol · 最强"
+        case "deepseek-v4-flash": "Flash · \(L10n.t("model.fast"))"
+        case "deepseek-v4-pro": "Pro · \(L10n.t("model.strong"))"
+        case "deepseek-chat": "Flash（\(L10n.t("model.oldName"))）"
+        case "deepseek-reasoner": "\(L10n.t("model.thinkingOld"))（\(L10n.t("model.oldName"))）"
+        case "gpt-5.6-luna": "Luna · \(L10n.t("model.cheap"))"
+        case "gpt-5.6-terra": "Terra · \(L10n.t("model.balanced"))"
+        case "gpt-5.6-sol": "Sol · \(L10n.t("model.best"))"
         case "gpt-4.1-mini": "4.1 mini"
         case "gpt-4.1": "4.1"
         case "gpt-4o-mini": "4o mini"
-        case "kimi-k2.6": "K2.6 · 通用"
-        case "kimi-k3": "K3 · 旗舰"
-        case "kimi-k2.7-code": "K2.7 · 编程"
-        case "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k": "K2.6（旧名）"
+        case "kimi-k2.6": "K2.6 · \(L10n.t("model.general"))"
+        case "kimi-k3": "K3 · \(L10n.t("model.flagship"))"
+        case "kimi-k2.7-code": "K2.7 · \(L10n.t("model.coding"))"
+        case "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k": "K2.6（\(L10n.t("model.oldName"))）"
         default: model
         }
     }
@@ -141,7 +141,7 @@ struct LLMSettings: Equatable {
             return provider.caption
         }
         let model = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
-        return model.isEmpty ? "已填密钥" : model
+        return model.isEmpty ? L10n.t("model.hasKey") : model
     }
 
     var hasKey: Bool {
@@ -157,10 +157,10 @@ struct LLMSettings: Equatable {
     }
 
     var readySummary: String {
-        if !hasKey { return "还差 API Key" }
-        if !hasEndpoint { return "还差接口地址" }
-        if active.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "还差模型名" }
-        let think = active.thinkingEnabled ? " · 思考" : ""
+        if !hasKey { return L10n.t("model.missingKey") }
+        if !hasEndpoint { return L10n.t("model.missingURL") }
+        if active.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return L10n.t("model.missingModel") }
+        let think = active.thinkingEnabled ? L10n.t("model.thinkingSuffix") : ""
         return "\(activeProvider.title) · \(activeProvider.displayName(for: active.model))\(think)"
     }
 
