@@ -45,7 +45,3 @@ xcodebuild -project uyiprompt.xcodeproj -scheme uyiprompt \
 ```
 
 首次需要在 **系统设置 → 隐私与安全性 → 辅助功能** 打开 uyiprompt。换过签名或重装后，删掉旧条目再把新的 App 拖进去。
-
-## 文档
-
-- [docs/windows-and-modules.md](docs/windows-and-modules.md) — 窗口清单，AppKit / SwiftUI 分工
