@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>uyiprompt</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>uyiprompt</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>uyiprompt 需要读取当前 App，并把改写后的文字写回去。</string>
+	<key>NSQuitAlwaysKeepsWindows</key>
+	<false/>
+</dict>
+</plist>
