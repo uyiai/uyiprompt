@@ -77,29 +77,7 @@ struct OnboardingView: View {
             AppMark(size: 64)
             Text("选中文字，改写或翻译")
                 .font(.largeTitle.weight(.semibold))
-            HStack(spacing: 16) {
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        KeyCap(text: "⌘")
-                        KeyCap(text: "⇧")
-                        KeyCap(text: "E")
-                    }
-                    Text("改写")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        KeyCap(text: "⌘")
-                        KeyCap(text: "⇧")
-                        KeyCap(text: "T")
-                    }
-                    Text("翻译")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Text("待在菜单栏。在微信、浏览器、编辑器里选一段话，改完或译完点「替换」写回去。")
+            Text("待在菜单栏。选中一段话，右侧点「改写」或「翻译」，再点「替换」写回去。")
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -133,7 +111,7 @@ struct OnboardingView: View {
             IconBadge(symbol: "accessibility", size: 64)
             Text("需要「辅助功能」")
                 .font(.largeTitle.weight(.semibold))
-            Text("这样才能读到你选中的字，并把改写结果粘贴回去。只在你按快捷键时工作，可以稍后开启。")
+            Text("这样才能读到你选中的字，并把结果粘贴回去。只在你选中文字时工作，可以稍后开启。")
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

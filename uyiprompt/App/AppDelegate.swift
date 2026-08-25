@@ -70,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "uyiprompt.popover",
             "uyiprompt.settings",
             "uyiprompt.onboarding",
+            "uyiprompt.actionbar",
         ]
         for window in NSApp.windows {
             if let id = window.identifier?.rawValue, kept.contains(id) { continue }
@@ -126,5 +127,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         session?.saveNow()
         shortcuts?.invalidate()
+        windows?.invalidateSelectionWatcher()
     }
 }

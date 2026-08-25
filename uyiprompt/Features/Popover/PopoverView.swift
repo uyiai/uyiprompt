@@ -142,35 +142,10 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var translateResult: some View {
-        if model.state.enhancedText.isEmpty {
-            ScrollView {
-                Text(model.state.originalText)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("原文")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                        Text(model.state.originalText)
-                            .textSelection(.enabled)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    Divider().opacity(0.2)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("译文")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                        Text(model.state.enhancedText)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
+        ScrollView {
+            Text(model.state.enhancedText.isEmpty ? model.state.originalText : model.state.enhancedText)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

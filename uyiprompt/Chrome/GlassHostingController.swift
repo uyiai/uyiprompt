@@ -100,6 +100,30 @@ enum ProductWindowFactory {
         return panel
     }
 
+    /// PopClip-style chip bar. Never activates, so the source selection stays.
+    static func makeActionBar(size: CGSize) -> NSPanel {
+        let panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.identifier = NSUserInterfaceItemIdentifier("uyiprompt.actionbar")
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isReleasedWhenClosed = false
+        panel.isRestorable = false
+        panel.isFloatingPanel = true
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.level = .popUpMenu
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.hidesOnDeactivate = false
+        panel.worksWhenModal = true
+        panel.orderOut(nil)
+        return panel
+    }
+
     /// Custom Settings chrome: hidden titlebar over under-window material.
     static func makeSettingsWindow(size: CGSize) -> NSWindow {
         let window = NSWindow(

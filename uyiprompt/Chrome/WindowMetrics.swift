@@ -11,6 +11,8 @@ enum WindowMetrics {
     static let popoverCursorOffset = CGPoint(x: 12, y: -16)
     static let popoverEdgeGap: CGFloat = 8
 
+    static let actionBarSize = CGSize(width: 168, height: 40)
+
     static let settingsSignedIn = CGSize(width: 1020, height: 700)
     static let settingsSignedOut = CGSize(width: 700, height: 580)
 

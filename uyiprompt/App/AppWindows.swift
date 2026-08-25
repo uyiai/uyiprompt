@@ -9,6 +9,8 @@ final class AppWindows: ObservableObject {
     private let popover = EnhancePopoverController()
     private let settings = SettingsWindowController()
     private let onboarding = OnboardingWindowController()
+    private let actionBar = ActionBarController()
+    private let selectionWatcher = SelectionWatcher()
     let coordinator = EnhanceCoordinator()
     weak var statusItem: StatusItemController?
 
@@ -20,8 +22,34 @@ final class AppWindows: ObservableObject {
         popover.attach(session: session, windows: self)
         settings.attach(session: session, windows: self)
         onboarding.attach(session: session, windows: self)
+        actionBar.attach(session: session, windows: self)
+        selectionWatcher.attach(session: session, windows: self)
         coordinator.attach(session: session, windows: self)
         applyAppearance()
+    }
+
+    var isResultPopoverVisible: Bool { popover.isVisible }
+
+    func isActionBarWindow(_ window: NSWindow?) -> Bool {
+        actionBar.isBarWindow(window)
+    }
+
+    func showActionBar(text: String, bundleID: String?, near point: NSPoint) {
+        if isOnboardingVisible { return }
+        actionBar.show(text: text, bundleID: bundleID, near: point)
+    }
+
+    func hideActionBar() {
+        actionBar.hide()
+    }
+
+    func runCapturedSelection(text: String, bundleID: String?, job: SelectionJob, near point: NSPoint) {
+        hideActionBar()
+        coordinator.runCaptured(text: text, bundleID: bundleID, job: job, near: point)
+    }
+
+    func invalidateSelectionWatcher() {
+        selectionWatcher.invalidate()
     }
 
     func togglePanel() {
@@ -57,6 +85,7 @@ final class AppWindows: ObservableObject {
     }
 
     func showPopover(state: PopoverContentState, near point: NSPoint) {
+        hideActionBar()
         popover.show(state: state, near: point)
     }
 
@@ -71,6 +100,7 @@ final class AppWindows: ObservableObject {
         }
         hidePanel()
         hidePopover()
+        hideActionBar()
         settings.show(page: page)
     }
 

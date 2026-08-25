@@ -129,15 +129,106 @@ enum SelectionService {
     // MARK: - AX
 
     static func axSelectedText() -> String? {
+        axSelectionSnapshot().text
+    }
+
+    struct AXSelectionSnapshot {
+        var text: String
+        var cocoaBounds: CGRect?
+        var role: String?
+        var subrole: String?
+        var bundleID: String?
+
+        var isSecure: Bool {
+            subrole == (kAXSecureTextFieldSubrole as String) || role == "AXSecureTextField"
+        }
+
+        var isIgnorableRole: Bool {
+            let skip: Set<String> = [
+                "AXButton", "AXMenu", "AXMenuItem", "AXMenuBarItem",
+                "AXSlider", "AXScrollBar", "AXCheckBox", "AXRadioButton",
+                "AXPopUpButton", "AXTabGroup", "AXToolbar",
+            ]
+            if let role, skip.contains(role) { return true }
+            return false
+        }
+    }
+
+    static func axSelectionSnapshot() -> AXSelectionSnapshot {
+        let bundle = frontmostBundleID()
+        let empty = AXSelectionSnapshot(text: "", cocoaBounds: nil, role: nil, subrole: nil, bundleID: bundle)
         let system = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
         let focusedStatus = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused)
-        guard focusedStatus == .success, let focused else { return nil }
+        guard focusedStatus == .success, let focused else { return empty }
         let element = unsafeBitCast(focused, to: AXUIElement.self)
-        var value: CFTypeRef?
-        let textStatus = AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &value)
-        guard textStatus == .success else { return nil }
-        return value as? String
+
+        var textRef: CFTypeRef?
+        var text = ""
+        if AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &textRef) == .success {
+            text = textRef as? String ?? ""
+        }
+
+        var roleRef: CFTypeRef?
+        var role: String?
+        if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success {
+            role = roleRef as? String
+        }
+        var subRef: CFTypeRef?
+        var subrole: String?
+        if AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subRef) == .success {
+            subrole = subRef as? String
+        }
+
+        var cocoaBounds: CGRect?
+        var rangeRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
+           let rangeRef {
+            var boundsRef: CFTypeRef?
+            let status = AXUIElementCopyParameterizedAttributeValue(
+                element,
+                kAXBoundsForRangeParameterizedAttribute as CFString,
+                rangeRef,
+                &boundsRef
+            )
+            if status == .success, let boundsRef, CFGetTypeID(boundsRef) == AXValueGetTypeID() {
+                let axValue = unsafeBitCast(boundsRef, to: AXValue.self)
+                var cg = CGRect.zero
+                if AXValueGetValue(axValue, .cgRect, &cg), cg.width > 1, cg.height > 1 {
+                    cocoaBounds = cocoaRect(fromAX: cg)
+                }
+            }
+        }
+
+        return AXSelectionSnapshot(text: text, cocoaBounds: cocoaBounds, role: role, subrole: subrole, bundleID: bundle)
+    }
+
+    /// Chromium and some Electron apps only expose AX after this is set.
+    static func enableEnhancedAccessibility() {
+        guard let bundleID = frontmostBundleID(),
+              let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first
+        else { return }
+        let element = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        AXUIElementSetAttributeValue(element, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+    }
+
+    /// Brief ⌘C with clipboard restore. Only for selection-bar fallback.
+    static func peekClipboardSelection() async -> String? {
+        await copyViaClipboard()
+    }
+
+    /// Accessibility bounds use a top-left origin on the primary display.
+    private static func cocoaRect(fromAX rect: CGRect) -> CGRect {
+        let primaryMaxY = NSScreen.screens.first(where: { $0.frame.minX == 0 && $0.frame.minY == 0 })?.frame.maxY
+            ?? NSScreen.main?.frame.maxY
+            ?? 0
+        return CGRect(
+            x: rect.origin.x,
+            y: primaryMaxY - rect.origin.y - rect.height,
+            width: rect.width,
+            height: rect.height
+        )
     }
 
     // MARK: - Clipboard fallback

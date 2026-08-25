@@ -97,8 +97,6 @@ struct PanelView: View {
                 .font(.headline)
             Spacer()
             HStack(spacing: 4) {
-                ShortcutChip(text: "⌘⇧E", help: "选中文字后改写")
-                ShortcutChip(text: "⌘⇧T", help: "选中文字后翻译")
                 IconButton(symbol: session.panelPinned ? "pin.fill" : "pin", help: "始终置顶", active: session.panelPinned) {
                     session.panelPinned.toggle()
                     windows.applyPanelPin()
@@ -122,7 +120,7 @@ struct PanelView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(panelJob == .translate ? "粘贴要译的文字" : "粘贴要改的文字")
                         .foregroundStyle(.secondary)
-                    Text(panelJob == .translate ? "或在别的软件里选中后按 ⌘⇧T" : "或在别的软件里选中后按 ⌘⇧E")
+                    Text("或在别的软件里选中后点弹出的按钮")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -159,10 +157,6 @@ struct PanelView: View {
                 HStack {
                     if panelJob == .enhance {
                         ResultViewToggle(mode: $mode)
-                    } else {
-                        Text("译文")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button(copied ? "已复制" : "复制") { copyResult() }

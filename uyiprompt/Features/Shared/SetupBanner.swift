@@ -43,7 +43,7 @@ struct ShortcutChip: View {
 }
 
 struct HowToStrip: View {
-    var shortcut: String = "⌘⇧E"
+    var shortcut: String = "改写或翻译"
     var action: String = "点「替换」"
 
     var body: some View {
@@ -52,7 +52,7 @@ struct HowToStrip: View {
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-            HowToStep(symbol: "keyboard", title: "按 \(shortcut)")
+            HowToStep(symbol: "capsule", title: shortcut)
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -141,7 +141,7 @@ struct MenuBarHintView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("已经放到菜单栏")
                     .font(.headline)
-                Text("⌘⇧E 改写 · ⌘⇧T 翻译")
+                Text("选中文字后点「改写」或「翻译」")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

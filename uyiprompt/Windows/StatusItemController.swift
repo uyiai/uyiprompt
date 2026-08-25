@@ -18,7 +18,7 @@ final class StatusItemController: NSObject {
             image?.isTemplate = true
             button.image = image?.withSymbolConfiguration(.init(pointSize: 14, weight: .semibold))
             button.image?.isTemplate = true
-            button.toolTip = "uyiprompt · ⌘⇧E 改写 · ⌘⇧T 翻译"
+            button.toolTip = "uyiprompt · 选中文字后点「改写」或「翻译」"
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.target = self
             button.action = #selector(statusItemClicked(_:))

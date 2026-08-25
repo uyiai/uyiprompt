@@ -199,6 +199,17 @@ struct SettingsView: View {
                     .padding(12)
                 }
 
+                settingsBlock("选区") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        toggleRow("选中文字后显示动作条", isOn: $session.selectionActionBarEnabled)
+                        Text("松开鼠标后，在选区右侧出现「改写 / 翻译」。关掉后只能把文字粘贴到面板里处理。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 10)
+                    }
+                }
+
                 settingsBlock("桌面") {
                     VStack(spacing: 0) {
                         toggleRow("在程序坞显示图标", isOn: $session.showDockIcon) {
@@ -212,7 +223,7 @@ struct SettingsView: View {
                         toggleRow("改写后弹出结果窗", isOn: $session.enhancePopoverEnabled)
                         Divider().opacity(0.12).padding(.leading, 12)
                         VStack(alignment: .leading, spacing: 4) {
-                            toggleRow("按快捷键后立刻开始改写", isOn: $session.autoEnhanceOnShortcut)
+                            toggleRow("点「改写」后立刻开始", isOn: $session.autoEnhanceOnShortcut)
                             Text("关掉后，会先弹出窗口让你选风格再改写。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -354,23 +365,17 @@ struct SettingsView: View {
     private var shortcutsPage: some View {
         Form {
             LabeledContent {
+                Text("选中后点按钮").font(.body)
+            } label: {
+                Label("改写 / 翻译", systemImage: "capsule")
+            }
+            LabeledContent {
                 Text("⌘⇧U").font(.body.monospaced())
             } label: {
-                Label("打开面板", systemImage: "macwindow")
+                Label("打开草稿面板", systemImage: "macwindow")
             }
-            LabeledContent {
-                Text("⌘⇧E").font(.body.monospaced())
-            } label: {
-                Label("改写选中的文字", systemImage: "character.cursor.ibeam")
-            }
-            LabeledContent {
-                Text("⌘⇧T").font(.body.monospaced())
-            } label: {
-                Label("翻译选中的文字", systemImage: "globe")
-            }
-            HowToStrip(shortcut: "⌘⇧E", action: "点「替换」")
-            HowToStrip(shortcut: "⌘⇧T", action: "点「替换为译文」")
-            Text("在微信、浏览器、编辑器里选中文字后按 ⌘⇧E 改写，或 ⌘⇧T 翻译。浏览器里 ⌘⇧T 可能是「重新打开标签页」，那时用面板里的翻译即可。")
+            HowToStrip(shortcut: "改写或翻译", action: "点「替换」")
+            Text("在微信、备忘录里选中文字，右侧会出现改写 / 翻译。点按钮后，在浮层里替换或复制。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)

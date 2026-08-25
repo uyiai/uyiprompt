@@ -33,12 +33,22 @@ final class EnhanceCoordinator {
         start(job: .translate)
     }
 
-    private func start(job: SelectionJob) {
+    func runCaptured(text: String, bundleID: String?, job: SelectionJob, near point: NSPoint) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            start(job: job)
+            return
+        }
+        start(job: job, prefilledText: trimmed, bundleID: bundleID, anchor: point)
+    }
+
+    private func start(job: SelectionJob, prefilledText: String? = nil, bundleID: String? = nil, anchor: NSPoint = NSEvent.mouseLocation) {
         guard let session, let windows else { return }
         if windows.isOnboardingVisible {
             windows.showOnboarding()
             return
         }
+        windows.hideActionBar()
         if !session.llm.isReady {
             windows.showPopover(
                 state: .error(
@@ -47,7 +57,7 @@ final class EnhanceCoordinator {
                     job: job,
                     translateLanguage: session.translateLanguage
                 ),
-                near: NSEvent.mouseLocation
+                near: anchor
             )
             return
         }
@@ -55,10 +65,17 @@ final class EnhanceCoordinator {
         generation += 1
         let gen = generation
         task?.cancel()
-        let anchor = NSEvent.mouseLocation
 
         task = Task { [weak self] in
-            await self?.run(generation: gen, job: job, session: session, windows: windows, anchor: anchor)
+            await self?.run(
+                generation: gen,
+                job: job,
+                session: session,
+                windows: windows,
+                anchor: anchor,
+                prefilledText: prefilledText,
+                bundleID: bundleID
+            )
         }
     }
 
@@ -123,7 +140,15 @@ final class EnhanceCoordinator {
         }
     }
 
-    private func run(generation gen: Int, job: SelectionJob, session: AppSession, windows: AppWindows, anchor: NSPoint) async {
+    private func run(
+        generation gen: Int,
+        job: SelectionJob,
+        session: AppSession,
+        windows: AppWindows,
+        anchor: NSPoint,
+        prefilledText: String? = nil,
+        bundleID: String? = nil
+    ) async {
         let fallbackName = job == .translate ? "翻译" : session.currentProfile.name
         if !SelectionService.isTrusted {
             SelectionService.promptForAccessibility()
@@ -139,34 +164,44 @@ final class EnhanceCoordinator {
             return
         }
 
-        let front = SelectionService.frontmostBundleID()
-        if SelectionService.isOwnApp(front) {
-            if let capture, !capture.originalText.isEmpty {
-                windows.showPopover(state: state(from: capture, session: session, status: .ready), near: anchor)
-            } else {
+        let captured: SelectionCapture
+        if let prefilledText, !prefilledText.isEmpty {
+            captured = SelectionCapture(
+                text: prefilledText,
+                bundleID: bundleID ?? SelectionService.frontmostBundleID(),
+                usedClipboardFallback: false,
+                accessibilityDenied: false
+            )
+        } else {
+            let front = SelectionService.frontmostBundleID()
+            if SelectionService.isOwnApp(front) {
+                if let capture, !capture.originalText.isEmpty {
+                    windows.showPopover(state: state(from: capture, session: session, status: .ready), near: anchor)
+                } else {
+                    windows.showPopover(
+                        state: .error("请先在别的软件里选中文字", profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
+                        near: anchor
+                    )
+                }
+                return
+            }
+
+            captured = await SelectionService.readSelection(preferredBundleID: front)
+            guard gen == generation else { return }
+
+            if captured.accessibilityDenied {
+                SelectionService.promptForAccessibility()
                 windows.showPopover(
-                    state: .error("请先在别的软件里选中文字", profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
+                    state: .error(
+                        SelectionService.accessDeniedMessage,
+                        profile: fallbackName,
+                        job: job,
+                        translateLanguage: session.translateLanguage
+                    ),
                     near: anchor
                 )
+                return
             }
-            return
-        }
-
-        let captured = await SelectionService.readSelection(preferredBundleID: front)
-        guard gen == generation else { return }
-
-        if captured.accessibilityDenied {
-            SelectionService.promptForAccessibility()
-            windows.showPopover(
-                state: .error(
-                    SelectionService.accessDeniedMessage,
-                    profile: fallbackName,
-                    job: job,
-                    translateLanguage: session.translateLanguage
-                ),
-                near: anchor
-            )
-            return
         }
 
         let text = captured.text.trimmingCharacters(in: .whitespacesAndNewlines)

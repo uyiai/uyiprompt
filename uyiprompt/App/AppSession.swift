@@ -57,6 +57,7 @@ final class AppSession: ObservableObject {
     @Published var panelPinned = true { didSet { persistSoon() } }
     @Published var enhancePopoverEnabled = true { didSet { persistSoon() } }
     @Published var autoEnhanceOnShortcut = true { didSet { persistSoon() } }
+    @Published var selectionActionBarEnabled = true { didSet { persistSoon() } }
     @Published var onboardingCompleted = false { didSet { persistSoon() } }
     @Published var profiles: [WritingProfile] = WritingProfile.builtins { didSet { persistSoon() } }
     @Published var currentProfileID = WritingProfile.builtins[0].id { didSet { persistSoon() } }
@@ -189,6 +190,7 @@ final class AppSession: ObservableObject {
         var panelPinned: Bool
         var enhancePopoverEnabled: Bool
         var autoEnhanceOnShortcut: Bool
+        var selectionActionBarEnabled: Bool?
         var onboardingCompleted: Bool
         var profiles: [WritingProfile]
         var currentProfileID: String
@@ -208,6 +210,7 @@ final class AppSession: ObservableObject {
         panelPinned = snapshot.panelPinned
         enhancePopoverEnabled = snapshot.enhancePopoverEnabled
         autoEnhanceOnShortcut = snapshot.autoEnhanceOnShortcut
+        selectionActionBarEnabled = snapshot.selectionActionBarEnabled ?? true
         onboardingCompleted = snapshot.onboardingCompleted
         profiles = snapshot.profiles.isEmpty ? WritingProfile.builtins : snapshot.profiles
         currentProfileID = snapshot.currentProfileID
@@ -224,6 +227,7 @@ final class AppSession: ObservableObject {
             panelPinned: panelPinned,
             enhancePopoverEnabled: enhancePopoverEnabled,
             autoEnhanceOnShortcut: autoEnhanceOnShortcut,
+            selectionActionBarEnabled: selectionActionBarEnabled,
             onboardingCompleted: onboardingCompleted,
             profiles: profiles,
             currentProfileID: currentProfileID,

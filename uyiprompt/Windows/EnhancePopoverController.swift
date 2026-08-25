@@ -66,7 +66,7 @@ final class EnhancePopoverController {
     func show(state: PopoverContentState, near point: NSPoint) {
         model.state = state
         let window = ensureWindow()
-        let readyHeight: CGFloat = state.job == .translate ? 300 : 240
+        let readyHeight: CGFloat = 240
         let height: CGFloat = state.status == .loading ? WindowMetrics.popoverDefault.height : min(
             WindowMetrics.popoverMax.height,
             max(WindowMetrics.popoverDefault.height, readyHeight)
@@ -77,6 +77,8 @@ final class EnhancePopoverController {
         )
         window.orderFrontRegardless()
     }
+
+    var isVisible: Bool { panel?.isVisible == true }
 
     func hide() {
         panel?.orderOut(nil)

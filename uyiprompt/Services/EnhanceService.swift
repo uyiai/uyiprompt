@@ -19,7 +19,7 @@ enum EnhanceError: LocalizedError {
         case .missingModel:
             return "还没有填模型名。DeepSeek 常用 deepseek-v4-flash"
         case .emptyInput:
-            return "先选中一段文字，再按 ⌘⇧E 改写或 ⌘⇧T 翻译"
+            return "先选中一段文字，再点弹出的「改写」或「翻译」"
         case .tooLong:
             return "文字太长了，最多 5 万字"
         case .http(let code, let body):
