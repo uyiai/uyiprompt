@@ -27,7 +27,7 @@ macOS 菜单栏改写 / 翻译。选中文字后点选区下方的「改写」�
 
 `~/Library/Application Support/uyiprompt/settings.json` 只保存外观、模型名、地址等非密钥偏好（权限 0600）。`history.json` 是最近 20 条改写/翻译，同样只在本机。
 
-密钥只发往你填的 Base URL。仓库和截图里没有真实 Key（界面是圆点；测试里的 `sk-live` 是假数据）。
+密钥只发往你填的 Base URL。仓库里没有真实 Key（测试里的 `sk-live` 是假数据）。
 
 不要把 `settings.json`、钥匙串导出或 `.env` 提交到 git。本仓库 `.gitignore` 已忽略这些文件名。
 
