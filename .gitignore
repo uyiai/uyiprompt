@@ -6,3 +6,12 @@ xcuserdata/
 *.xccheckout
 *.xcscmblueprint
 .swiftpm/
+.env
+.env.*
+*.pem
+settings.json
+history.json
+*.app
+*.dSYM
+*.zip
+
