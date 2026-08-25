@@ -12,6 +12,7 @@ struct PanelView: View {
     @State private var copied = false
     @State private var accessibilityOn = SelectionService.isTrusted
     @State private var panelJob: SelectionJob = .enhance
+    @State private var workTask: Task<Void, Never>?
 
     private var canRun: Bool {
         !busy && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -84,6 +85,13 @@ struct PanelView: View {
         .frame(minWidth: WindowMetrics.panelMinSize.width, minHeight: WindowMetrics.panelMinSize.height)
         .background(UIChrome.canvasFill.opacity(0.55))
         .id(session.uiLanguage)
+        .onAppear { applyPanelSeed(windows.panelSeed) }
+        .onChange(of: windows.panelSeed) { _, seed in
+            applyPanelSeed(seed)
+        }
+        .onDisappear {
+            workTask?.cancel()
+        }
         .onAppear { accessibilityOn = SelectionService.isTrusted }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             accessibilityOn = SelectionService.isTrusted
@@ -204,6 +212,15 @@ struct PanelView: View {
         return panelJob == .translate ? L10n.t("panel.again.translate") : L10n.t("panel.again.enhance")
     }
 
+    private func applyPanelSeed(_ seed: AppWindows.PanelSeed?) {
+        guard let seed else { return }
+        draft = seed.text
+        panelJob = seed.job
+        result = ""
+        error = ""
+        windows.consumePanelSeed()
+    }
+
     private func run() {
         let text = draft
         busy = true
@@ -212,12 +229,29 @@ struct PanelView: View {
             mode = ResultViewMode.default(forProfileID: session.currentProfile.id)
         }
         let job = panelJob
-        Task {
+        workTask?.cancel()
+        workTask = Task { @MainActor in
             defer { busy = false }
             do {
-                result = try await windows.rewriteDraft(text, job: job)
+                result = ""
+                let finished = try await windows.rewriteDraft(text, job: job) { piece in
+                    Task { @MainActor in
+                        result += piece
+                    }
+                }
+                result = finished
+                windows.session.recordHistory(
+                    job: job,
+                    original: text,
+                    result: result,
+                    label: job == .translate ? L10n.t("job.translate") : session.currentProfile.localizedName
+                )
+            } catch is CancellationError {
+                return
             } catch {
-                self.error = error.localizedDescription
+                if !Task.isCancelled {
+                    self.error = error.localizedDescription
+                }
             }
         }
     }

@@ -58,6 +58,8 @@ final class StatusItemController: NSObject {
         menu.addItem(Self.item(L10n.t("menu.settings"), action: #selector(openSettings), target: self, symbol: "gearshape", key: ","))
         menu.addItem(Self.item(L10n.t("menu.onboarding"), action: #selector(openOnboarding), target: self, symbol: "questionmark.circle"))
         menu.addItem(.separator())
+        menu.addItem(recentMenuItem())
+        menu.addItem(.separator())
         let currentName = session?.currentProfile.localizedName ?? L10n.t("profile.grammar")
         let active = NSMenuItem(title: L10n.format("menu.currentProfile", currentName), action: nil, keyEquivalent: "")
         active.image = NSImage(systemSymbolName: "text.book.closed", accessibilityDescription: nil)
@@ -68,6 +70,28 @@ final class StatusItemController: NSObject {
         statusItem?.menu = menu
         button.performClick(nil)
         statusItem?.menu = nil
+    }
+
+    private func recentMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: L10n.t("menu.recent"), action: nil, keyEquivalent: "")
+        item.image = NSImage(systemSymbolName: "clock", accessibilityDescription: nil)
+        let menu = NSMenu()
+        let items = session?.history.items ?? []
+        if items.isEmpty {
+            menu.addItem(NSMenuItem(title: L10n.t("menu.noRecent"), action: nil, keyEquivalent: ""))
+        } else {
+            for entry in items.prefix(8) {
+                let title = "\(entry.job == .translate ? L10n.t("job.translate") : entry.label) · \(entry.preview)"
+                let row = NSMenuItem(title: String(title.prefix(60)), action: #selector(copyHistory(_:)), keyEquivalent: "")
+                row.target = self
+                row.representedObject = entry.id.uuidString
+                menu.addItem(row)
+            }
+            menu.addItem(.separator())
+            menu.addItem(Self.item(L10n.t("nav.history"), action: #selector(openHistory), target: self, symbol: "clock"))
+        }
+        item.submenu = menu
+        return item
     }
 
     private func profileSubmenu() -> NSMenu {
@@ -104,6 +128,14 @@ final class StatusItemController: NSObject {
         hint.show(from: button)
     }
 
+    @objc private func openHistory() { windows?.showSettings(page: .history) }
+    @objc private func copyHistory(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let item = session?.history.items.first(where: { $0.id.uuidString == id })
+        else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(item.result, forType: .string)
+    }
     @objc private func openPanel() { windows?.showPanel() }
     @objc private func enhanceSelection() { windows?.enhanceSelection() }
     @objc private func translateSelection() { windows?.translateSelection() }

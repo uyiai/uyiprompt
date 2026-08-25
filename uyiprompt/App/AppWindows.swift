@@ -13,6 +13,12 @@ final class AppWindows: ObservableObject {
     private let selectionWatcher = SelectionWatcher()
     let coordinator = EnhanceCoordinator()
     weak var statusItem: StatusItemController?
+    @Published private(set) var panelSeed: PanelSeed?
+
+    struct PanelSeed: Equatable {
+        var text: String
+        var job: SelectionJob
+    }
 
     var isOnboardingVisible: Bool { onboarding.isVisible }
 
@@ -48,8 +54,12 @@ final class AppWindows: ObservableObject {
         coordinator.runCaptured(text: text, bundleID: bundleID, job: job, near: point)
     }
 
-    func rewriteDraft(_ text: String, job: SelectionJob) async throws -> String {
-        try await RewritePipeline.transform(message: text, job: job, session: session)
+    func rewriteDraft(
+        _ text: String,
+        job: SelectionJob,
+        onDelta: (@Sendable (String) -> Void)? = nil
+    ) async throws -> String {
+        try await RewritePipeline.transform(message: text, job: job, session: session, onDelta: onDelta)
     }
 
     func invalidateSelectionWatcher() {
@@ -64,12 +74,30 @@ final class AppWindows: ObservableObject {
         panel.toggle()
     }
 
-    func showPanel() {
+    func showPanel(draft: String? = nil, job: SelectionJob? = nil) {
         if onboarding.isVisible {
             onboarding.focus()
             return
         }
+        if let draft {
+            seedPanel(draft: draft, job: job ?? .enhance)
+        }
+        hidePopover()
+        hideActionBar()
         panel.show()
+    }
+
+    @discardableResult
+    func seedPanel(draft: String, job: SelectionJob) -> PanelSeed? {
+        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let seed = PanelSeed(text: trimmed, job: job)
+        panelSeed = seed
+        return seed
+    }
+
+    func consumePanelSeed() {
+        panelSeed = nil
     }
 
     func hidePanel() {

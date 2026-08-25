@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PopoverView: View {
@@ -84,13 +85,11 @@ struct PopoverView: View {
                     Text(loadingTitle)
                         .foregroundStyle(.secondary)
                 }
-                if !model.state.originalText.isEmpty {
-                    Text(model.state.originalText)
-                        .lineLimit(4)
-                        .foregroundStyle(.tertiary)
-                        .padding(8)
+                ScrollView {
+                    Text(model.state.enhancedText.isEmpty ? model.state.originalText : model.state.enhancedText)
+                        .textSelection(.enabled)
+                        .foregroundStyle(model.state.enhancedText.isEmpty ? .tertiary : .primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -102,16 +101,7 @@ struct PopoverView: View {
                     Text(model.state.error)
                         .foregroundStyle(Color.red)
                 }
-                if model.state.error.contains("辅助功能") || model.state.error.contains("Accessibility") {
-                    Button(L10n.t("popover.reauth")) {
-                        SelectionService.requestAccess()
-                    }
-                }
-                if model.state.error.contains("API Key") || model.state.error.contains("密钥") {
-                    Button(L10n.t("panel.goKey")) {
-                        windows.showSettings(page: .providers)
-                    }
-                }
+                recoveryActions
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         case .ready:
@@ -138,6 +128,46 @@ struct PopoverView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var recoveryActions: some View {
+        switch model.state.recovery {
+        case .none:
+            EmptyView()
+        case .accessibility:
+            Button(L10n.t("popover.reauth")) {
+                SelectionService.requestAccess()
+            }
+            Button(L10n.t("recovery.openPanel")) {
+                openPanelWithAvailableText()
+            }
+        case .apiKey:
+            Button(L10n.t("panel.goKey")) {
+                windows.showSettings(page: .providers)
+            }
+        case .emptySelection:
+            Button(L10n.t("recovery.openPanel")) {
+                windows.showPanel(job: model.state.job)
+            }
+            .buttonStyle(.borderedProminent)
+        case .pasteFailed:
+            Button(L10n.t("recovery.continueInPanel")) {
+                openPanelWithAvailableText()
+            }
+            .buttonStyle(.borderedProminent)
+            if !model.state.originalText.isEmpty {
+                Button(L10n.t("recovery.copyOriginal")) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(model.state.originalText, forType: .string)
+                }
+            }
+        }
+    }
+
+    private func openPanelWithAvailableText() {
+        let text = model.state.enhancedText.isEmpty ? model.state.originalText : model.state.enhancedText
+        windows.showPanel(draft: text.isEmpty ? nil : text, job: model.state.job)
     }
 
     @ViewBuilder

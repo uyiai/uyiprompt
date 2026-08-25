@@ -226,13 +226,34 @@ extension LLMSettings: Codable {
         providers = mapped
     }
 
+    mutating func loadSecrets(from store: any SecretStore) {
+        for provider in LLMProvider.allCases {
+            var settings = endpoint(provider)
+            let jsonKey = settings.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            if jsonKey.isEmpty {
+                if let stored = store.get(account: provider.rawValue), !stored.isEmpty {
+                    settings.key = stored
+                    providers[provider] = settings
+                }
+            } else {
+                store.set(jsonKey, account: provider.rawValue)
+            }
+        }
+    }
+
+    func saveSecrets(to store: any SecretStore) {
+        for provider in LLMProvider.allCases {
+            store.set(endpoint(provider).key, account: provider.rawValue)
+        }
+    }
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(activeProvider, forKey: .activeProvider)
         var raw: [String: ProviderDTO] = [:]
         for (provider, value) in providers {
             raw[provider.rawValue] = ProviderDTO(
-                key: value.key,
+                key: "",
                 model: value.model,
                 baseURL: value.baseURL,
                 thinkingEnabled: value.thinkingEnabled

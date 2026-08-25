@@ -15,7 +15,7 @@ macOS 菜单栏改写 / 翻译工具。选中文字后点右侧「改写」或�
 open uyiprompt.xcodeproj
 ```
 
-请用 **Release** 运行（Product → Run，或下面的命令）。Xcode 27 的 Debug 包是空壳，点开会立刻退出。
+入口是 AppKit `AppDelegate`。Xcode 里 Product → Run 用 Debug 即可。需要分发包时再用 Release：
 
 ```bash
 xcodebuild -project uyiprompt.xcodeproj -scheme uyiprompt \
@@ -24,7 +24,7 @@ xcodebuild -project uyiprompt.xcodeproj -scheme uyiprompt \
 
 ## 使用
 
-1. 打开应用，走完三步引导（选中动作、辅助功能、连接模型）。
+1. 打开应用，走完三步引导（选中动作、辅助功能、连接模型）。之后待在菜单栏，点图标再打开设置。
 2. 设置 → **模型服务**：选 DeepSeek / OpenAI / Kimi / 自定义，粘贴 API Key，点「测试连接」。
 3. 在微信、备忘录、编辑器里选中文字，选区右侧点「改写」或「翻译」。
 4. 在浮层里点「替换」或「复制」。**⌘⇧U** 打开草稿面板。目标语言在设置 → 通用。

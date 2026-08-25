@@ -1,6 +1,6 @@
 import Foundation
 
-enum SelectionJob: String, Equatable, Hashable, Sendable {
+enum SelectionJob: String, Equatable, Hashable, Codable, Sendable {
     case enhance
     case translate
 

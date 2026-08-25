@@ -8,7 +8,8 @@ enum RewritePipeline {
         job: SelectionJob,
         session: AppSession,
         bundleID: String? = nil,
-        profileID: String? = nil
+        profileID: String? = nil,
+        onDelta: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         switch job {
         case .enhance:
@@ -20,13 +21,15 @@ enum RewritePipeline {
                 profilePrompt: profile.systemPrompt,
                 settings: session.llm,
                 language: session.enhanceLanguage,
-                codingTarget: coding
+                codingTarget: coding,
+                onDelta: onDelta
             )
         case .translate:
             return try await EnhanceService.translate(
                 message: message,
                 settings: session.llm,
-                language: session.translateLanguage
+                language: session.translateLanguage,
+                onDelta: onDelta
             )
         }
     }

@@ -55,7 +55,8 @@ final class EnhanceCoordinator {
                     EnhanceError.missingAPIKey.errorDescription ?? L10n.t("error.missingKey"),
                     profile: job == .translate ? L10n.t("job.translate") : session.currentProfile.localizedName,
                     job: job,
-                    translateLanguage: session.translateLanguage
+                    translateLanguage: session.translateLanguage,
+                    recovery: .apiKey
                 ),
                 near: anchor
             )
@@ -119,8 +120,10 @@ final class EnhanceCoordinator {
                         L10n.t("error.pasteAccess"),
                         profile: label(for: capture),
                         original: capture.originalText,
+                        enhanced: capture.enhancedText,
                         job: capture.job,
-                        translateLanguage: capture.translateLanguage
+                        translateLanguage: capture.translateLanguage,
+                        recovery: .pasteFailed
                     ),
                     near: NSEvent.mouseLocation
                 )
@@ -131,8 +134,10 @@ final class EnhanceCoordinator {
                         result.error ?? L10n.t("error.pasteFail"),
                         profile: label(for: capture),
                         original: capture.originalText,
+                        enhanced: capture.enhancedText,
                         job: capture.job,
-                        translateLanguage: capture.translateLanguage
+                        translateLanguage: capture.translateLanguage,
+                        recovery: .pasteFailed
                     ),
                     near: NSEvent.mouseLocation
                 )
@@ -157,7 +162,8 @@ final class EnhanceCoordinator {
                     SelectionService.accessDeniedMessage,
                     profile: fallbackName,
                     job: job,
-                    translateLanguage: session.translateLanguage
+                    translateLanguage: session.translateLanguage,
+                    recovery: .accessibility
                 ),
                 near: anchor
             )
@@ -179,7 +185,13 @@ final class EnhanceCoordinator {
                     windows.showPopover(state: state(from: capture, session: session, status: .ready), near: anchor)
                 } else {
                     windows.showPopover(
-                        state: .error(L10n.t("error.selectOther"), profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
+                        state: .error(
+                            L10n.t("error.selectOther"),
+                            profile: fallbackName,
+                            job: job,
+                            translateLanguage: session.translateLanguage,
+                            recovery: .emptySelection
+                        ),
                         near: anchor
                     )
                 }
@@ -196,7 +208,8 @@ final class EnhanceCoordinator {
                         SelectionService.accessDeniedMessage,
                         profile: fallbackName,
                         job: job,
-                        translateLanguage: session.translateLanguage
+                        translateLanguage: session.translateLanguage,
+                        recovery: .accessibility
                     ),
                     near: anchor
                 )
@@ -207,7 +220,13 @@ final class EnhanceCoordinator {
         let text = captured.text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty {
             windows.showPopover(
-                state: .error(L10n.t("error.noSelection"), profile: fallbackName, job: job, translateLanguage: session.translateLanguage),
+                state: .error(
+                    L10n.t("error.noSelection"),
+                    profile: fallbackName,
+                    job: job,
+                    translateLanguage: session.translateLanguage,
+                    recovery: .emptySelection
+                ),
                 near: anchor
             )
             return
@@ -274,12 +293,32 @@ final class EnhanceCoordinator {
                 job: capture.job,
                 session: session,
                 bundleID: capture.bundleID,
-                profileID: capture.profileID
+                profileID: capture.profileID,
+                onDelta: { [weak self] piece in
+                    Task { @MainActor in
+                        guard let self, gen == self.generation else { return }
+                        var stored = self.capture ?? capture
+                        stored.enhancedText += piece
+                        self.capture = stored
+                        if !silent {
+                            windows.showPopover(
+                                state: self.state(from: stored, session: session, status: .loading),
+                                near: anchor
+                            )
+                        }
+                    }
+                }
             )
             guard gen == generation else { return }
             var stored = capture
             stored.enhancedText = result
             self.capture = stored
+            session.recordHistory(
+                job: stored.job,
+                original: stored.originalText,
+                result: result,
+                label: label(for: stored, session: session)
+            )
             if silent {
                 let paste = await SelectionService.paste(result, into: capture.bundleID)
                 if !paste.ok {
@@ -289,8 +328,10 @@ final class EnhanceCoordinator {
                             profile: label(for: stored, session: session),
                             profileId: stored.profileID,
                             original: stored.originalText,
+                            enhanced: stored.enhancedText,
                             job: stored.job,
-                            translateLanguage: stored.translateLanguage
+                            translateLanguage: stored.translateLanguage,
+                            recovery: .pasteFailed
                         ),
                         near: anchor
                     )
@@ -344,18 +385,21 @@ extension PopoverContentState {
         profile: String,
         profileId: String = "",
         original: String = "",
+        enhanced: String = "",
         job: SelectionJob = .enhance,
-        translateLanguage: TranslateLanguage = .auto
+        translateLanguage: TranslateLanguage = .auto,
+        recovery: Recovery = .none
     ) -> PopoverContentState {
         PopoverContentState(
             status: .error,
             profileId: profileId,
             profileName: profile,
             originalText: original,
-            enhancedText: "",
+            enhancedText: enhanced,
             error: message,
             job: job,
-            translateLanguage: translateLanguage
+            translateLanguage: translateLanguage,
+            recovery: recovery
         )
     }
 }

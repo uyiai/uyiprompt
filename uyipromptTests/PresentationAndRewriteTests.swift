@@ -73,6 +73,65 @@ struct RewritePipelineTests {
             try await windows.rewriteDraft("", job: .translate)
         }
     }
+
+    @Test @MainActor func selectionFallbackSeedsDraftPanel() {
+        let session = AppSession()
+        let windows = AppWindows()
+        windows.attach(session: session)
+        defer { windows.invalidateSelectionWatcher() }
+        let seed = windows.seedPanel(draft: "hello panel", job: .translate)
+        #expect(seed?.text == "hello panel")
+        #expect(seed?.job == .translate)
+        #expect(windows.panelSeed?.text == "hello panel")
+        windows.consumePanelSeed()
+        #expect(windows.panelSeed == nil)
+        #expect(windows.seedPanel(draft: "   ", job: .enhance) == nil)
+    }
+}
+
+@Suite("Secrets, stream parser, history")
+struct StoreAndStreamTests {
+    @Test func memorySecretsRoundTripAndJSONOmitsKeys() throws {
+        let store = MemorySecretStore()
+        store.set("sk-live", account: "deepseek")
+        #expect(store.get(account: "deepseek") == "sk-live")
+        var settings = LLMSettings.empty
+        var deepseek = settings.endpoint(.deepseek)
+        deepseek.key = "sk-live"
+        settings.providers[.deepseek] = deepseek
+        settings.saveSecrets(to: store)
+        let encoded = try JSONEncoder().encode(settings)
+        let json = String(data: encoded, encoding: .utf8) ?? ""
+        #expect(!json.contains("sk-live"))
+        var decoded = try JSONDecoder().decode(LLMSettings.self, from: encoded)
+        decoded.loadSecrets(from: store)
+        #expect(decoded.endpoint(.deepseek).key == "sk-live")
+    }
+
+    @Test func sseParserReadsDeltaContent() {
+        #expect(SSEChatParser.content(fromLine: "data: [DONE]") == nil)
+        let line = #"data: {"choices":[{"delta":{"content":"Hello"}}]}"#
+        #expect(SSEChatParser.content(fromLine: line) == "Hello")
+        var parser = SSEChatParser()
+        let pieces = parser.ingest("data: {\"choices\":[{\"delta\":{\"content\":\"ab\"}}]}\nfoo\ndata: {\"choices\":[{\"delta\":{\"content\":\"c\"}}]}\n")
+        #expect(pieces == ["ab", "c"])
+    }
+
+    @Test @MainActor func historyCapsAndDedupes() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("uyiprompt-history-test-\(UUID().uuidString).json")
+        let store = HistoryStore(fileURL: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        for index in 1...25 {
+            store.record(job: .enhance, original: "in\(index)", result: "out\(index)", label: "校对")
+        }
+        #expect(store.items.count == HistoryStore.cap)
+        #expect(store.items.first?.original == "in25")
+        store.record(job: .enhance, original: "in25", result: "out25", label: "校对")
+        #expect(store.items.count == HistoryStore.cap)
+        #expect(store.items.filter { $0.original == "in25" }.count == 1)
+        store.clear()
+        #expect(store.items.isEmpty)
+    }
 }
 
 @Suite("Interface language", .serialized)
@@ -92,5 +151,31 @@ struct L10nTests {
     @Test func systemChineseResolvesToChinese() {
         #expect(AppLanguage.chinese.resolved == .chinese)
         #expect(AppLanguage.english.resolved == .english)
+    }
+}
+
+@Suite("Selection recovery")
+struct SelectionRecoveryTests {
+    @Test func emptySelectionErrorOffersPanel() {
+        let state = PopoverContentState.error(
+            "missing",
+            profile: "校对",
+            recovery: .emptySelection
+        )
+        #expect(state.recovery == .emptySelection)
+        #expect(state.status == .error)
+    }
+
+    @Test func pasteFailureKeepsResultForPanel() {
+        let state = PopoverContentState.error(
+            "paste",
+            profile: "校对",
+            original: "src",
+            enhanced: "dst",
+            recovery: .pasteFailed
+        )
+        #expect(state.recovery == .pasteFailed)
+        #expect(state.originalText == "src")
+        #expect(state.enhancedText == "dst")
     }
 }

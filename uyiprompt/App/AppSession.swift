@@ -72,6 +72,7 @@ final class AppSession: ObservableObject {
     @Published var enhanceLanguage: EnhanceLanguage = .auto { didSet { persistSoon() } }
     @Published var translateLanguage: TranslateLanguage = .auto { didSet { persistSoon() } }
     @Published var appProfileRules: [String: String] = [:] { didSet { persistSoon() } }
+    let history = HistoryStore()
     private var isLoading = true
 
     enum EnhanceLanguage: String, CaseIterable, Identifiable, Codable {
@@ -148,10 +149,12 @@ final class AppSession: ObservableObject {
 
     init() {
         load()
+        history.load()
         L10n.sync(uiLanguage)
         isLoading = false
         migrateBuiltinNames()
         migrateRetiredModels()
+        saveNow()
     }
 
     private func migrateRetiredModels() {
@@ -195,6 +198,10 @@ final class AppSession: ObservableObject {
     func saveNow() {
         persistTask?.cancel()
         write()
+    }
+
+    func recordHistory(job: SelectionJob, original: String, result: String, label: String) {
+        history.record(job: job, original: original, result: result, label: label)
     }
 
     private func persistSoon() {
@@ -244,9 +251,13 @@ final class AppSession: ObservableObject {
         appProfileRules = snapshot.appProfileRules ?? [:]
         uiLanguage = snapshot.uiLanguage ?? .system
         L10n.sync(uiLanguage)
+        var hydrated = llm
+        hydrated.loadSecrets(from: SecretStores.current)
+        llm = hydrated
     }
 
     private func write() {
+        llm.saveSecrets(to: SecretStores.current)
         let snapshot = Snapshot(
             appearance: appearance,
             showDockIcon: showDockIcon,

@@ -75,7 +75,8 @@ enum EnhanceService {
         profilePrompt: String,
         settings: LLMSettings,
         language: AppSession.EnhanceLanguage = .auto,
-        codingTarget: String? = nil
+        codingTarget: String? = nil,
+        onDelta: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { throw EnhanceError.emptyInput }
@@ -105,7 +106,9 @@ enum EnhanceService {
             system: system,
             user: user,
             provider: settings.activeProvider,
-            thinking: endpoint.thinkingEnabled
+            thinking: endpoint.thinkingEnabled,
+            stream: true,
+            onDelta: onDelta
         )
         let cleaned = stripDelimiters(output).trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.isEmpty { throw EnhanceError.emptyResponse }
@@ -115,7 +118,8 @@ enum EnhanceService {
     static func translate(
         message: String,
         settings: LLMSettings,
-        language: TranslateLanguage
+        language: TranslateLanguage,
+        onDelta: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { throw EnhanceError.emptyInput }
@@ -152,7 +156,9 @@ enum EnhanceService {
             maxTokens: 8192,
             provider: settings.activeProvider,
             thinking: false,
-            temperature: 0.2
+            temperature: 0.2,
+            stream: true,
+            onDelta: onDelta
         )
         let cleaned = stripDelimiters(output).trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.isEmpty { throw EnhanceError.emptyResponse }
@@ -203,7 +209,9 @@ enum EnhanceService {
         maxTokens: Int = 4096,
         provider: LLMProvider?,
         thinking: Bool,
-        temperature: Double = 0.3
+        temperature: Double = 0.3,
+        stream: Bool = false,
+        onDelta: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         var body: [String: Any] = [
             "model": model,
@@ -231,6 +239,18 @@ enum EnhanceService {
                 break
             }
         }
+        if stream {
+            body["stream"] = true
+            let assembled = try await postSSE(
+                url: url,
+                body: body,
+                headers: ["Authorization": "Bearer \(key)"],
+                timeout: thinking ? 90 : 60,
+                onDelta: onDelta
+            )
+            if assembled.isEmpty { throw EnhanceError.emptyResponse }
+            return assembled
+        }
         let json = try await postJSON(
             url: url,
             body: body,
@@ -248,6 +268,57 @@ enum EnhanceService {
             }
         }
         throw EnhanceError.emptyResponse
+    }
+
+    private static func postSSE(
+        url: URL,
+        body: [String: Any],
+        headers: [String: String],
+        timeout: TimeInterval,
+        onDelta: (@Sendable (String) -> Void)?
+    ) async throws -> String {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = timeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await URLSession.shared.bytes(for: request)
+        } catch {
+            throw EnhanceError.network("")
+        }
+        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if code == 0 { throw EnhanceError.network("") }
+        if !(200...299).contains(code) {
+            var data = Data()
+            for try await byte in bytes {
+                data.append(byte)
+            }
+            var detail = String(data: data, encoding: .utf8) ?? ""
+            if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let err = object["error"] as? [String: Any], let message = err["message"] as? String {
+                    detail = message
+                } else if let message = object["message"] as? String {
+                    detail = message
+                }
+            }
+            throw EnhanceError.http(code, String(detail.prefix(200)))
+        }
+        var assembled = ""
+        for try await line in bytes.lines {
+            try Task.checkCancellation()
+            if let piece = SSEChatParser.content(fromLine: line) {
+                assembled += piece
+                onDelta?(piece)
+            }
+        }
+        return assembled
     }
 
     private static func postJSON(

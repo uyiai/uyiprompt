@@ -8,6 +8,14 @@ struct PopoverContentState: Equatable {
         case error
     }
 
+    enum Recovery: Equatable {
+        case none
+        case accessibility
+        case apiKey
+        case emptySelection
+        case pasteFailed
+    }
+
     var status: Status
     var profileId: String
     var profileName: String
@@ -16,6 +24,7 @@ struct PopoverContentState: Equatable {
     var error: String
     var job: SelectionJob = .enhance
     var translateLanguage: TranslateLanguage = .auto
+    var recovery: Recovery = .none
 }
 
 @MainActor

@@ -91,6 +91,7 @@ struct SettingsView: View {
         switch model.page {
         case .providers: ProviderSettingsView(editing: $model.editingProvider)
         case .general: generalPage
+        case .history: historyPage
         case .profiles: profilesPage
         case .appDefaults: appDefaultsPage
         case .shortcuts: shortcutsPage
@@ -218,6 +219,10 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var historyPage: some View {
+        HistoryListView(store: session.history)
     }
 
     private func languageRow<Control: View>(_ title: String, caption: String, @ViewBuilder control: () -> Control) -> some View {

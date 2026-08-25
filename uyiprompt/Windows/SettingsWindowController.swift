@@ -4,6 +4,7 @@ import SwiftUI
 enum SettingsPage: String, CaseIterable, Identifiable {
     case providers
     case general
+    case history
     case profiles
     case appDefaults
     case shortcuts
@@ -14,6 +15,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .providers: L10n.t("nav.providers")
         case .general: L10n.t("nav.general")
+        case .history: L10n.t("nav.history")
         case .profiles: L10n.t("nav.profiles")
         case .appDefaults: L10n.t("nav.appDefaults")
         case .shortcuts: L10n.t("nav.shortcuts")
@@ -24,6 +26,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .providers: "选服务商、填密钥。和 Cherry Studio 一样，每个供应商单独配置。"
         case .general: "外观、权限、改写和翻译时的行为。"
+        case .history: ""
         case .profiles: "每种风格是一套给模型的说明，可随时改。"
         case .appDefaults: "给邮件、编辑器等指定默认风格。"
         case .shortcuts: "全局有效，在别的软件里也能用。"
@@ -34,6 +37,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .providers: "cpu.fill"
         case .general: "gearshape.fill"
+        case .history: "clock.fill"
         case .profiles: "book.fill"
         case .appDefaults: "square.grid.2x2.fill"
         case .shortcuts: "keyboard.fill"
@@ -44,6 +48,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .providers: Color(red: 0.20, green: 0.48, blue: 1.00)
         case .general: Color(red: 0.22, green: 0.22, blue: 0.24)
+        case .history: Color(red: 0.20, green: 0.62, blue: 0.78)
         case .profiles: Color(red: 0.18, green: 0.40, blue: 0.95)
         case .appDefaults: Color(red: 0.45, green: 0.33, blue: 0.96)
         case .shortcuts: Color(red: 0.96, green: 0.52, blue: 0.18)
