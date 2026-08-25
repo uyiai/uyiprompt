@@ -49,6 +49,112 @@ struct OverlayPresentationTests {
         let hosted = host.view.subviews.compactMap { $0 as? NSHostingView<Text> }.first
         #expect(hosted is FirstMouseHostingView<Text>)
         #expect(hosted?.acceptsFirstMouse(for: nil) == true)
+        #expect(hosted?.isOpaque == false)
+    }
+
+    @Test @MainActor func actionBarHostHasNoGlassUnderlay() {
+        let host = GlassHostingController(
+            rootView: Text("chip"),
+            material: nil,
+            cornerRadius: WindowMetrics.actionBarSize.height / 2,
+            firstMouse: true
+        )
+        _ = host.view
+        #expect(!(host.view is NSVisualEffectView))
+        #expect(host.view.layer?.cornerRadius == WindowMetrics.actionBarSize.height / 2)
+        #expect(host.view.layer?.masksToBounds == true)
+    }
+}
+
+@Suite("Action bar placement")
+struct ActionBarPlacementTests {
+    private let size = WindowMetrics.actionBarSize
+    private let work = NSRect(x: 0, y: 0, width: 1440, height: 900)
+    private let gap = WindowMetrics.actionBarGap
+    private let chrome = WindowMetrics.actionBarNativeChromeHeight
+
+    @Test func sitsBelowSelectionAndMissesNativeCopyBand() {
+        let selection = NSRect(x: 400, y: 400, width: 160, height: 18)
+        let cursor = NSPoint(x: selection.maxX, y: selection.midY)
+        let frame = ActionBarPlacement.frame(
+            selectionBounds: selection,
+            cursor: cursor,
+            size: size,
+            workArea: work
+        )
+        let avoid = ActionBarPlacement.nativeChromeAvoidRect(around: selection)
+        #expect(frame.maxY <= selection.minY - gap + 0.5)
+        #expect(frame.intersects(selection) == false)
+        #expect(frame.intersects(avoid) == false)
+        #expect(frame.maxY < selection.maxY)
+    }
+
+    @Test func doesNotSitBesideSelectionWhereHostCopyChipsLand() {
+        let selection = NSRect(x: 500, y: 360, width: 80, height: 20)
+        let oldBeside = NSRect(
+            x: selection.maxX + 20,
+            y: selection.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+        let frame = ActionBarPlacement.frame(
+            selectionBounds: selection,
+            cursor: NSPoint(x: selection.maxX, y: selection.midY),
+            size: size,
+            workArea: work
+        )
+        #expect(frame.intersects(oldBeside) == false)
+        #expect(abs(frame.midY - selection.midY) > size.height / 2)
+    }
+
+    @Test func flipsAboveNativeChromeWhenThereIsNoRoomBelow() {
+        let selection = NSRect(x: 200, y: 16, width: 140, height: 20)
+        let frame = ActionBarPlacement.frame(
+            selectionBounds: selection,
+            cursor: NSPoint(x: selection.midX, y: selection.midY),
+            size: size,
+            workArea: work
+        )
+        let avoid = ActionBarPlacement.nativeChromeAvoidRect(around: selection)
+        #expect(frame.minY >= selection.maxY + chrome + gap - 0.5)
+        #expect(frame.intersects(avoid) == false)
+        #expect(frame.intersects(selection) == false)
+    }
+
+    @Test func cursorOnlySitsBelowTheMouse() {
+        let cursor = NSPoint(x: 640, y: 480)
+        let frame = ActionBarPlacement.frame(
+            selectionBounds: nil,
+            cursor: cursor,
+            size: size,
+            workArea: work
+        )
+        #expect(frame.maxY <= cursor.y - gap + 0.5)
+        #expect(frame.intersects(NSRect(x: cursor.x, y: cursor.y, width: 1, height: 1)) == false)
+    }
+
+    @Test func staysInsideTheWorkArea() {
+        let selection = NSRect(x: 1320, y: 860, width: 100, height: 24)
+        let frame = ActionBarPlacement.frame(
+            selectionBounds: selection,
+            cursor: NSPoint(x: 1410, y: 870),
+            size: size,
+            workArea: work
+        )
+        let inset = work.insetBy(dx: WindowMetrics.actionBarScreenInset, dy: WindowMetrics.actionBarScreenInset)
+        #expect(inset.contains(frame))
+    }
+
+    @Test @MainActor func controllerForwardsExplicitWorkArea() {
+        let selection = NSRect(x: 80, y: 200, width: 40, height: 16)
+        let frame = ActionBarController.clampedFrame(
+            anchor: NSPoint(x: 100, y: 208),
+            size: size,
+            selectionBounds: selection,
+            workArea: work
+        )
+        #expect(frame.maxY <= selection.minY - gap + 0.5)
+        #expect(frame.size == size)
     }
 }
 

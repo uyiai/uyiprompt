@@ -40,9 +40,9 @@ final class AppWindows: ObservableObject {
         actionBar.isBarWindow(window)
     }
 
-    func showActionBar(text: String, bundleID: String?, near point: NSPoint) {
+    func showActionBar(text: String, bundleID: String?, near point: NSPoint, selectionBounds: CGRect? = nil) {
         if isOnboardingVisible { return }
-        actionBar.show(text: text, bundleID: bundleID, near: point)
+        actionBar.show(text: text, bundleID: bundleID, near: point, selectionBounds: selectionBounds)
     }
 
     func hideActionBar() {

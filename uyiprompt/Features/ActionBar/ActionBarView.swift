@@ -12,11 +12,12 @@ struct ActionBarView: View {
             chip(title: L10n.t("job.translate"), symbol: "globe", action: onTranslate)
         }
         .padding(4)
-        .background(Color.black.opacity(0.88), in: Capsule())
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(white: 0.12), in: Capsule(style: .continuous))
         .overlay(
-            Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.16), lineWidth: 0.5)
         )
-        .shadow(color: Color.black.opacity(0.28), radius: 12, y: 4)
+        .clipShape(Capsule(style: .continuous))
     }
 
     private func chip(title: String, symbol: String, action: @escaping () -> Void) -> some View {

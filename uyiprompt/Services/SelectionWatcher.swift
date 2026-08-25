@@ -186,16 +186,17 @@ final class SelectionWatcher {
             return
         }
 
-        var anchor = NSPoint(x: point.x + 16, y: point.y + 12)
+        var selectionBounds: CGRect?
         if let bounds = snap.cocoaBounds, ProductWindowFactory.frameIntersectsAnyScreen(bounds) {
-            anchor = NSPoint(x: bounds.maxX + 10, y: bounds.midY)
+            selectionBounds = bounds
         }
 
         ignoreScrollUntil = Date().addingTimeInterval(0.8)
         windows.showActionBar(
             text: text,
             bundleID: snap.bundleID,
-            near: anchor
+            near: point,
+            selectionBounds: selectionBounds
         )
     }
 }

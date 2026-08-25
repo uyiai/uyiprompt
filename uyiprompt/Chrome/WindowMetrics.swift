@@ -12,6 +12,11 @@ enum WindowMetrics {
     static let popoverEdgeGap: CGFloat = 8
 
     static let actionBarSize = CGSize(width: 168, height: 38)
+    /// Gap between the selection and the chip bar.
+    static let actionBarGap: CGFloat = 12
+    /// Notes / Safari / WeChat put Copy · Look Up in this band above the selection.
+    static let actionBarNativeChromeHeight: CGFloat = 52
+    static let actionBarScreenInset: CGFloat = 8
 
     static let settingsSignedIn = CGSize(width: 860, height: 580)
     static let settingsSignedOut = CGSize(width: 700, height: 520)

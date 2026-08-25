@@ -7,12 +7,25 @@ import SwiftUI
 final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+    override var isOpaque: Bool { false }
+
+    required init(rootView: Content) {
+        super.init(rootView: rootView)
+        wantsLayer = true
+        layer?.isOpaque = false
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
 
 @MainActor
 final class GlassHostingController<Content: View>: NSViewController {
     private let rootView: Content
-    private let material: NSVisualEffectView.Material
+    private let material: NSVisualEffectView.Material?
     private let blending: NSVisualEffectView.BlendingMode
     private let emphasized: Bool
     private let cornerRadius: CGFloat
@@ -20,7 +33,7 @@ final class GlassHostingController<Content: View>: NSViewController {
 
     init(
         rootView: Content,
-        material: NSVisualEffectView.Material = .hudWindow,
+        material: NSVisualEffectView.Material? = .hudWindow,
         blending: NSVisualEffectView.BlendingMode = .withinWindow,
         emphasized: Bool = true,
         cornerRadius: CGFloat = 0,
@@ -41,29 +54,45 @@ final class GlassHostingController<Content: View>: NSViewController {
     }
 
     override func loadView() {
-        let visualEffectView = NSVisualEffectView()
-        visualEffectView.material = material
-        visualEffectView.blendingMode = blending
-        visualEffectView.state = emphasized ? .active : .followsWindowActiveState
-        visualEffectView.isEmphasized = emphasized
+        let container: NSView
+        if let material {
+            let visualEffectView = NSVisualEffectView()
+            visualEffectView.material = material
+            visualEffectView.blendingMode = blending
+            visualEffectView.state = emphasized ? .active : .followsWindowActiveState
+            visualEffectView.isEmphasized = emphasized
+            container = visualEffectView
+        } else {
+            let plain = NSView()
+            plain.wantsLayer = true
+            plain.layer?.isOpaque = false
+            plain.layer?.backgroundColor = NSColor.clear.cgColor
+            container = plain
+        }
         if cornerRadius > 0 {
-            visualEffectView.wantsLayer = true
-            visualEffectView.layer?.cornerRadius = cornerRadius
-            visualEffectView.layer?.masksToBounds = true
+            container.wantsLayer = true
+            container.layer?.cornerRadius = cornerRadius
+            container.layer?.cornerCurve = .continuous
+            container.layer?.masksToBounds = true
         }
         let hosted: NSHostingView<Content> = firstMouse
             ? FirstMouseHostingView(rootView: rootView)
             : NSHostingView(rootView: rootView)
         hosted.sizingOptions = []
         hosted.translatesAutoresizingMaskIntoConstraints = false
-        visualEffectView.addSubview(hosted)
+        if firstMouse == false {
+            hosted.wantsLayer = true
+            hosted.layer?.isOpaque = false
+            hosted.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+        container.addSubview(hosted)
         NSLayoutConstraint.activate([
-            hosted.leadingAnchor.constraint(equalTo: visualEffectView.leadingAnchor),
-            hosted.trailingAnchor.constraint(equalTo: visualEffectView.trailingAnchor),
-            hosted.topAnchor.constraint(equalTo: visualEffectView.topAnchor),
-            hosted.bottomAnchor.constraint(equalTo: visualEffectView.bottomAnchor),
+            hosted.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hosted.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hosted.topAnchor.constraint(equalTo: container.topAnchor),
+            hosted.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
-        view = visualEffectView
+        view = container
     }
 }
 
