@@ -1,6 +1,6 @@
 import AppKit
 
-/// Left-click toggles the panel; right-click opens the menu — same as PromptDC.
+/// Left-click toggles the panel; right-click opens the menu.
 @MainActor
 final class StatusItemController: NSObject {
     private var statusItem: NSStatusItem?

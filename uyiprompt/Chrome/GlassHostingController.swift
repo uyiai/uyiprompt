@@ -2,8 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Puts SwiftUI on top of `NSVisualEffectView` so the desktop behind the window
-/// actually blurs. CSS/`backdrop-filter` cannot do this; Electron wrapped the
-/// same AppKit view.
+/// actually blurs. CSS/`backdrop-filter` cannot do this.
 final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
@@ -188,7 +187,7 @@ enum ProductWindowFactory {
         return window
     }
 
-    /// First-run is opaque, matching the Electron onboarding window.
+    /// First-run is opaque.
     static func makeOnboardingWindow(size: CGSize) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),

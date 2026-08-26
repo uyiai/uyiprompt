@@ -78,10 +78,12 @@ final class HistoryStore: ObservableObject {
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let tmp = fileURL.appendingPathExtension("tmp")
             try data.write(to: tmp, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tmp.path)
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 try FileManager.default.removeItem(at: fileURL)
             }
             try FileManager.default.moveItem(at: tmp, to: fileURL)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
         } catch {
             NSLog("[uyiprompt] history write failed: %@", error.localizedDescription)
         }

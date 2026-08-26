@@ -1,6 +1,6 @@
 import Foundation
 
-/// Maps a frontmost Mac app to a coding-tool prompt hint, matching PromptDC `coding-target.js`.
+/// Maps a frontmost Mac app to a coding-tool prompt hint.
 enum CodingTarget {
     static let bundleKeys: [String: String] = [
         "com.todesktop.230313mzl4w4u92": "cursor",

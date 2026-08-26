@@ -10,8 +10,7 @@ struct CaptureSession {
     var translateLanguage: TranslateLanguage
 }
 
-/// Shortcut → capture → enhance → popover → replace.
-/// Mirrors Electron `enhanceSelection` in main.js.
+/// Capture → enhance/translate → overlay → replace.
 @MainActor
 final class EnhanceCoordinator {
     private weak var windows: AppWindows?
@@ -19,6 +18,7 @@ final class EnhanceCoordinator {
     private var capture: CaptureSession?
     private var task: Task<Void, Never>?
     private var generation = 0
+    private var streamRenderScheduled = false
 
     func attach(session: AppSession, windows: AppWindows) {
         self.session = session
@@ -300,9 +300,16 @@ final class EnhanceCoordinator {
                         var stored = self.capture ?? capture
                         stored.enhancedText += piece
                         self.capture = stored
-                        if !silent {
+                        // Coalesce popover refreshes: fast streams can deliver dozens
+                        // of deltas per second, and each render rebuilds state + layout.
+                        guard !silent, !self.streamRenderScheduled else { return }
+                        self.streamRenderScheduled = true
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 60_000_000)
+                            self.streamRenderScheduled = false
+                            guard gen == self.generation, let latest = self.capture else { return }
                             windows.showPopover(
-                                state: self.state(from: stored, session: session, status: .loading),
+                                state: self.state(from: latest, session: session, status: .loading),
                                 near: anchor
                             )
                         }

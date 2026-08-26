@@ -1,5 +1,9 @@
 import Foundation
 
+enum SettingsSchema {
+    static let current = 1
+}
+
 struct WritingProfile: Identifiable, Hashable, Codable {
     var id: String
     var name: String
@@ -72,6 +76,8 @@ final class AppSession: ObservableObject {
     @Published var enhanceLanguage: EnhanceLanguage = .auto { didSet { persistSoon() } }
     @Published var translateLanguage: TranslateLanguage = .auto { didSet { persistSoon() } }
     @Published var appProfileRules: [String: String] = [:] { didSet { persistSoon() } }
+    @Published var historyEnabled = true { didSet { persistSoon() } }
+    @Published var disabledActionBarBundleIDs: Set<String> = [] { didSet { persistSoon() } }
     let history = HistoryStore()
     private var isLoading = true
 
@@ -201,7 +207,18 @@ final class AppSession: ObservableObject {
     }
 
     func recordHistory(job: SelectionJob, original: String, result: String, label: String) {
+        guard historyEnabled else { return }
         history.record(job: job, original: original, result: result, label: label)
+    }
+
+    static func migrate(_ snapshot: Snapshot) -> Snapshot {
+        var next = snapshot
+        let version = next.schemaVersion ?? 0
+        if version < 1 {
+            next.llm.migrateRetiredModels()
+        }
+        next.schemaVersion = max(version, SettingsSchema.current)
+        return next
     }
 
     private func persistSoon() {
@@ -214,7 +231,8 @@ final class AppSession: ObservableObject {
         }
     }
 
-    private struct Snapshot: Codable {
+    struct Snapshot: Codable, Equatable {
+        var schemaVersion: Int?
         var appearance: AppearancePreference
         var showDockIcon: Bool
         var panelPinned: Bool
@@ -229,13 +247,16 @@ final class AppSession: ObservableObject {
         var translateLanguage: TranslateLanguage?
         var appProfileRules: [String: String]?
         var uiLanguage: AppLanguage?
+        var historyEnabled: Bool?
+        var disabledActionBarBundleIDs: Set<String>?
     }
 
     private func load() {
         let url = Self.fileURL
         guard let data = try? Data(contentsOf: url),
-              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data)
+              let decoded = try? JSONDecoder().decode(Snapshot.self, from: data)
         else { return }
+        let snapshot = Self.migrate(decoded)
         appearance = snapshot.appearance
         showDockIcon = snapshot.showDockIcon
         panelPinned = snapshot.panelPinned
@@ -250,6 +271,8 @@ final class AppSession: ObservableObject {
         translateLanguage = snapshot.translateLanguage ?? .auto
         appProfileRules = snapshot.appProfileRules ?? [:]
         uiLanguage = snapshot.uiLanguage ?? .system
+        historyEnabled = snapshot.historyEnabled ?? true
+        disabledActionBarBundleIDs = snapshot.disabledActionBarBundleIDs ?? []
         L10n.sync(uiLanguage)
         var hydrated = llm
         hydrated.loadSecrets(from: SecretStores.current)
@@ -259,6 +282,7 @@ final class AppSession: ObservableObject {
     private func write() {
         llm.saveSecrets(to: SecretStores.current)
         let snapshot = Snapshot(
+            schemaVersion: SettingsSchema.current,
             appearance: appearance,
             showDockIcon: showDockIcon,
             panelPinned: panelPinned,
@@ -272,7 +296,9 @@ final class AppSession: ObservableObject {
             enhanceLanguage: enhanceLanguage,
             translateLanguage: translateLanguage,
             appProfileRules: appProfileRules,
-            uiLanguage: uiLanguage
+            uiLanguage: uiLanguage,
+            historyEnabled: historyEnabled,
+            disabledActionBarBundleIDs: disabledActionBarBundleIDs
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         do {

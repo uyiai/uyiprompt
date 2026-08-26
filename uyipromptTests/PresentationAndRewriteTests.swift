@@ -214,6 +214,37 @@ struct StoreAndStreamTests {
         #expect(decoded.endpoint(.deepseek).key == "sk-live")
     }
 
+    @Test func thinkTagsAndTruncationHelpers() {
+        #expect(EnhanceService.stripThink("<think>plan</think>result") == "result")
+        #expect(EnhanceService.stripThink("a<think>x</think>b<think>y</think>c") == "abc")
+        #expect(EnhanceService.stripThink("<think>unclosed leak") == "unclosed leak")
+        #expect(EnhanceService.scaledMaxTokens(forInputLength: 100) == 4096)
+        #expect(EnhanceService.scaledMaxTokens(forInputLength: 50_000) == 16_384)
+        #expect(EnhanceService.scaledMaxTokens(forInputLength: 100, floor: 8192) == 8192)
+        let line = #"data: {"choices":[{"delta":{},"finish_reason":"length"}]}"#
+        #expect(SSEChatParser.finishReason(fromLine: line) == "length")
+        #expect(SSEChatParser.finishReason(fromLine: "data: [DONE]") == nil)
+    }
+
+    @Test func transportErrorsStayDiagnosable() {
+        let timeout = EnhanceService.mapTransport(URLError(.timedOut))
+        #expect(timeout as? EnhanceError == EnhanceError.network(L10n.t("error.timeout")))
+        let offline = EnhanceService.mapTransport(URLError(.notConnectedToInternet))
+        #expect(offline as? EnhanceError == EnhanceError.network(L10n.t("error.offline")))
+        #expect(EnhanceService.mapTransport(CancellationError()) is CancellationError)
+        #expect(EnhanceService.mapTransport(URLError(.cancelled)) is CancellationError)
+    }
+
+    @Test @MainActor func historyToggleStopsRecording() {
+        let session = AppSession()
+        let before = session.history.items.count
+        let previous = session.historyEnabled
+        defer { session.historyEnabled = previous }
+        session.historyEnabled = false
+        session.recordHistory(job: .enhance, original: "src", result: "dst", label: "校对")
+        #expect(session.history.items.count == before)
+    }
+
     @Test func sseParserReadsDeltaContent() {
         #expect(SSEChatParser.content(fromLine: "data: [DONE]") == nil)
         let line = #"data: {"choices":[{"delta":{"content":"Hello"}}]}"#
@@ -283,5 +314,69 @@ struct SelectionRecoveryTests {
         #expect(state.recovery == .pasteFailed)
         #expect(state.originalText == "src")
         #expect(state.enhancedText == "dst")
+    }
+}
+
+@Suite("Provider catalog and settings schema")
+struct CatalogAndSchemaTests {
+    @Test func pickerOmitsRetiredModels() {
+        #expect(LLMProvider.deepseek.suggestedModels == ["deepseek-v4-flash", "deepseek-v4-pro"])
+        #expect(LLMProvider.openai.suggestedModels == ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"])
+        #expect(!LLMProvider.deepseek.suggestedModels.contains("deepseek-chat"))
+        #expect(LLMProvider.custom.suggestedModels.isEmpty)
+        #expect(LLMProvider.custom.supportsThinkingToggle == false)
+        #expect(LLMProvider.deepseek.thinkingPayload == .typeObject)
+    }
+
+    @Test func retiredModelsMigrateFromCatalog() {
+        var settings = LLMSettings.empty
+        var deepseek = settings.endpoint(.deepseek)
+        deepseek.model = "deepseek-reasoner"
+        settings.providers[.deepseek] = deepseek
+        var openai = settings.endpoint(.openai)
+        openai.model = "gpt-4o-mini"
+        settings.providers[.openai] = openai
+        settings.migrateRetiredModels()
+        #expect(settings.endpoint(.deepseek).model == "deepseek-v4-flash")
+        #expect(settings.endpoint(.deepseek).thinkingEnabled == true)
+        #expect(settings.endpoint(.openai).model == "gpt-5.6-luna")
+    }
+
+    @Test @MainActor func oldSettingsJSONGetsSchemaVersion() throws {
+        let json = """
+        {
+          "appearance": "system",
+          "showDockIcon": false,
+          "panelPinned": true,
+          "enhancePopoverEnabled": true,
+          "autoEnhanceOnShortcut": true,
+          "onboardingCompleted": true,
+          "profiles": [],
+          "currentProfileID": "grammar",
+          "llm": {
+            "activeProvider": "deepseek",
+            "providers": {
+              "deepseek": {"key":"","model":"deepseek-chat","baseURL":"https://api.deepseek.com/v1"}
+            }
+          }
+        }
+        """
+        let decoded = try JSONDecoder().decode(AppSession.Snapshot.self, from: Data(json.utf8))
+        #expect(decoded.schemaVersion == nil)
+        let migrated = AppSession.migrate(decoded)
+        #expect(migrated.schemaVersion == SettingsSchema.current)
+        #expect(migrated.llm.endpoint(.deepseek).model == "deepseek-v4-flash")
+        #expect(migrated.llm.endpoint(.deepseek).thinkingEnabled == false)
+        let encoded = try JSONEncoder().encode(migrated)
+        let object = try JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        #expect(object?["schemaVersion"] as? Int == SettingsSchema.current)
+    }
+
+    @Test func selectionFenceDropsLegacyAndCurrentMarkers() {
+        let wrapped = EnhanceService.delimit("hello")
+        #expect(wrapped.contains("UYIPROMPT_SELECTION"))
+        #expect(!wrapped.contains("PROMPTDC"))
+        #expect(SelectionFence.strip("\(SelectionFence.start)x\(SelectionFence.end)") == "x")
+        #expect(SelectionFence.strip("<<<PROMPTDC_SELECTION>>>y<<<END_PROMPTDC_SELECTION>>>") == "y")
     }
 }

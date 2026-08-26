@@ -119,9 +119,33 @@ enum SelectionService {
         let snapshot = ClipboardSnapshot.capture()
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        let changeCountBeforePaste = NSPasteboard.general.changeCount
         KeystrokeSynthesizer.commandV()
-        try? await Task.sleep(nanoseconds: 400_000_000)
-        snapshot.restore()
+
+        // Give slow hosts (Electron in particular) time to consume the paste
+        // before the clipboard is restored. Bail out early if focus moved away
+        // or something replaced the pasteboard mid-paste — the ⌘V likely landed
+        // in the wrong place, so report failure instead of pretending success.
+        var focusLost = false
+        var boardHijacked = false
+        let deadline = Date().addingTimeInterval(0.6)
+        while Date() < deadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            if let bundleID, frontmostBundleID() != bundleID {
+                focusLost = true
+                break
+            }
+            if NSPasteboard.general.changeCount != changeCountBeforePaste {
+                boardHijacked = true
+                break
+            }
+        }
+        if !boardHijacked {
+            snapshot.restore()
+        }
+        if focusLost {
+            return SelectionPasteResult(ok: false, accessibilityDenied: false, error: L10n.t("error.pasteFail"))
+        }
         return SelectionPasteResult(ok: true, accessibilityDenied: false, error: nil)
     }
 
@@ -157,10 +181,14 @@ enum SelectionService {
         let bundle = frontmostBundleID()
         let empty = AXSelectionSnapshot(text: "", cocoaBounds: nil, role: nil, subrole: nil, bundleID: bundle)
         let system = AXUIElementCreateSystemWide()
+        // A busy/unresponsive target process can otherwise block these
+        // synchronous AX calls (and our main thread) for several seconds.
+        AXUIElementSetMessagingTimeout(system, 0.3)
         var focused: CFTypeRef?
         let focusedStatus = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused)
         guard focusedStatus == .success, let focused else { return empty }
         let element = unsafeBitCast(focused, to: AXUIElement.self)
+        AXUIElementSetMessagingTimeout(element, 0.3)
 
         var textRef: CFTypeRef?
         var text = ""

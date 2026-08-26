@@ -153,14 +153,8 @@ final class SelectionWatcher {
         var snap = SelectionService.axSelectionSnapshot()
         var text = snap.text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let allowClipboard = dragged || clickCount >= 2
-        if text.count < 2, allowClipboard {
-            if let copied = await SelectionService.peekClipboardSelection() {
-                text = copied.trimmingCharacters(in: .whitespacesAndNewlines)
-                snap.text = text
-            }
-        }
-
+        // Safety guards MUST run before any synthetic ⌘C: never send keystrokes
+        // into secure fields, our own UI, or apps the user opted out of.
         if snap.isSecure || snap.isIgnorableRole {
             windows.hideActionBar()
             return
@@ -169,9 +163,18 @@ final class SelectionWatcher {
             windows.hideActionBar()
             return
         }
-        if let id = snap.bundleID, Self.ignoredBundleIDs.contains(id) {
+        if let id = snap.bundleID,
+           Self.ignoredBundleIDs.contains(id) || session.disabledActionBarBundleIDs.contains(id) {
             windows.hideActionBar()
             return
+        }
+
+        let allowClipboard = dragged || clickCount >= 2
+        if text.count < 2, allowClipboard {
+            if let copied = await SelectionService.peekClipboardSelection() {
+                text = copied.trimmingCharacters(in: .whitespacesAndNewlines)
+                snap.text = text
+            }
         }
 
         guard text.count >= 2 else {

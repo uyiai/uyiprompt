@@ -216,6 +216,15 @@ struct SettingsView: View {
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
                     }
+                    SettingsHairline()
+                    VStack(alignment: .leading, spacing: 4) {
+                        toggleRow(L10n.t("history.record"), isOn: $session.historyEnabled)
+                        Text(L10n.t("history.record.caption"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
+                    }
                 }
             }
         }
@@ -330,6 +339,10 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
+                        Toggle(L10n.t("appDefaults.actionBar"), isOn: actionBarBinding(app.bundleID))
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .help(L10n.t("selection.actionBar"))
                         Picker(L10n.t("appDefaults.profile"), selection: ruleBinding(app.bundleID)) {
                             Text(L10n.t("appDefaults.follow")).tag("")
                             ForEach(session.profiles) { profile in
@@ -356,6 +369,10 @@ struct SettingsView: View {
                     shortcutRow(L10n.t("shortcuts.chips"), caption: L10n.t("shortcuts.chips.caption"), keys: [L10n.t("shortcuts.select"), L10n.t("job.enhance")])
                     SettingsHairline()
                     shortcutRow(L10n.t("shortcuts.panel"), caption: L10n.t("shortcuts.panel.caption"), keys: ["⌘", "⇧", "U"])
+                    SettingsHairline()
+                    shortcutRow(L10n.t("shortcuts.enhance"), caption: L10n.t("job.enhanceSelection"), keys: ["⌃", "⇧", "E"])
+                    SettingsHairline()
+                    shortcutRow(L10n.t("shortcuts.translate"), caption: L10n.t("job.translateSelection"), keys: ["⌃", "⇧", "T"])
                 }
             }
             HowToStrip(shortcut: L10n.t("howto.action"), action: L10n.t("howto.replace"))
@@ -386,6 +403,21 @@ struct SettingsView: View {
             }
         }
         .padding(16)
+    }
+
+    private func actionBarBinding(_ bundleID: String) -> Binding<Bool> {
+        Binding(
+            get: { !session.disabledActionBarBundleIDs.contains(bundleID) },
+            set: { enabled in
+                var ids = session.disabledActionBarBundleIDs
+                if enabled {
+                    ids.remove(bundleID)
+                } else {
+                    ids.insert(bundleID)
+                }
+                session.disabledActionBarBundleIDs = ids
+            }
+        )
     }
 
     private func ruleBinding(_ bundleID: String) -> Binding<String> {

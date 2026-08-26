@@ -14,7 +14,9 @@ final class ShortcutService: @unchecked Sendable {
     @MainActor
     func install(windows: AppWindows) {
         self.windows = windows
-        register(keyCode: UInt32(kVK_ANSI_U), actionID: 1)
+        register(keyCode: UInt32(kVK_ANSI_U), modifiers: UInt32(cmdKey + shiftKey), actionID: 1)
+        register(keyCode: UInt32(kVK_ANSI_E), modifiers: UInt32(controlKey + shiftKey), actionID: 2)
+        register(keyCode: UInt32(kVK_ANSI_T), modifiers: UInt32(controlKey + shiftKey), actionID: 3)
         installHandler()
     }
 
@@ -29,12 +31,14 @@ final class ShortcutService: @unchecked Sendable {
         }
     }
 
-    private func register(keyCode: UInt32, actionID: UInt32) {
+    private func register(keyCode: UInt32, modifiers: UInt32, actionID: UInt32) {
         var hotKeyRef: EventHotKeyRef?
         var hotKeyID = EventHotKeyID(signature: OSType(0x55594950), id: actionID)
-        let status = RegisterEventHotKey(keyCode, UInt32(cmdKey + shiftKey), hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
         if status == noErr, let hotKeyRef {
             hotKeys.append(hotKeyRef)
+        } else {
+            NSLog("[uyiprompt] hotkey %u registration failed (status %d) — likely taken by another app", actionID, status)
         }
     }
 
@@ -73,6 +77,8 @@ final class ShortcutService: @unchecked Sendable {
     private func handle(id: UInt32) {
         switch id {
         case 1: windows?.togglePanel()
+        case 2: windows?.enhanceSelection()
+        case 3: windows?.translateSelection()
         default: break
         }
     }

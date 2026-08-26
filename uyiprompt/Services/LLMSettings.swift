@@ -8,95 +8,25 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    private var catalog: ProviderCatalog.Vendor { ProviderCatalog.vendor(self) }
+
     var title: String {
-        switch self {
-        case .deepseek: "DeepSeek"
-        case .openai: "OpenAI"
-        case .moonshot: "Kimi"
-        case .custom: L10n.t("provider.custom")
-        }
+        if let key = catalog.titleKey { return L10n.t(key) }
+        return catalog.title
     }
 
-    var caption: String {
-        switch self {
-        case .deepseek: L10n.t("provider.deepseek.caption")
-        case .openai: L10n.t("provider.openai.caption")
-        case .moonshot: L10n.t("provider.moonshot.caption")
-        case .custom: L10n.t("provider.custom.caption")
-        }
-    }
-
-    var keyPlaceholder: String {
-        switch self {
-        case .deepseek: "sk-..."
-        case .openai: "sk-..."
-        case .moonshot: "sk-..."
-        case .custom: "API Key"
-        }
-    }
-
-    var signupURL: URL? {
-        switch self {
-        case .deepseek: URL(string: "https://platform.deepseek.com/api_keys")
-        case .openai: URL(string: "https://platform.openai.com/api-keys")
-        case .moonshot: URL(string: "https://platform.moonshot.cn/console/api-keys")
-        case .custom: nil
-        }
-    }
-
-    var helpText: String {
-        switch self {
-        case .deepseek: L10n.t("provider.deepseek.help")
-        case .openai: L10n.t("provider.openai.help")
-        case .moonshot: L10n.t("provider.moonshot.help")
-        case .custom: L10n.t("provider.custom.help")
-        }
-    }
-
-    var defaultBaseURL: String {
-        switch self {
-        case .deepseek: "https://api.deepseek.com/v1"
-        case .openai: "https://api.openai.com/v1"
-        case .moonshot: "https://api.moonshot.cn/v1"
-        case .custom: ""
-        }
-    }
-
-    var suggestedModels: [String] {
-        switch self {
-        case .deepseek: ["deepseek-v4-flash", "deepseek-v4-pro"]
-        case .openai: ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]
-        case .moonshot: ["kimi-k2.6", "kimi-k3", "kimi-k2.7-code"]
-        case .custom: []
-        }
-    }
-
-    var defaultModel: String {
-        suggestedModels.first ?? ""
-    }
-
-    var supportsThinkingToggle: Bool {
-        self != .custom
-    }
+    var caption: String { L10n.t(catalog.captionKey) }
+    var keyPlaceholder: String { catalog.keyPlaceholder }
+    var signupURL: URL? { catalog.signupURL.flatMap(URL.init(string:)) }
+    var helpText: String { L10n.t(catalog.helpKey) }
+    var defaultBaseURL: String { catalog.defaultBaseURL }
+    var suggestedModels: [String] { ProviderCatalog.pickerIDs(for: self) }
+    var defaultModel: String { suggestedModels.first ?? "" }
+    var supportsThinkingToggle: Bool { catalog.supportsThinking }
+    var thinkingPayload: ProviderCatalog.ThinkingPayload { catalog.thinkingPayload }
 
     func displayName(for model: String) -> String {
-        switch model {
-        case "deepseek-v4-flash": "Flash · \(L10n.t("model.fast"))"
-        case "deepseek-v4-pro": "Pro · \(L10n.t("model.strong"))"
-        case "deepseek-chat": "Flash（\(L10n.t("model.oldName"))）"
-        case "deepseek-reasoner": "\(L10n.t("model.thinkingOld"))（\(L10n.t("model.oldName"))）"
-        case "gpt-5.6-luna": "Luna · \(L10n.t("model.cheap"))"
-        case "gpt-5.6-terra": "Terra · \(L10n.t("model.balanced"))"
-        case "gpt-5.6-sol": "Sol · \(L10n.t("model.best"))"
-        case "gpt-4.1-mini": "4.1 mini"
-        case "gpt-4.1": "4.1"
-        case "gpt-4o-mini": "4o mini"
-        case "kimi-k2.6": "K2.6 · \(L10n.t("model.general"))"
-        case "kimi-k3": "K3 · \(L10n.t("model.flagship"))"
-        case "kimi-k2.7-code": "K2.7 · \(L10n.t("model.coding"))"
-        case "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k": "K2.6（\(L10n.t("model.oldName"))）"
-        default: model
-        }
+        ProviderCatalog.displayName(provider: self, model: model)
     }
 }
 
@@ -165,27 +95,17 @@ struct LLMSettings: Equatable {
     }
 
     mutating func migrateRetiredModels() {
-        let aliases: [String: (model: String, thinking: Bool?)] = [
-            "deepseek-chat": ("deepseek-v4-flash", false),
-            "deepseek-reasoner": ("deepseek-v4-flash", true),
-            "gpt-4.1-mini": ("gpt-5.6-luna", nil),
-            "gpt-4o-mini": ("gpt-5.6-luna", nil),
-            "gpt-4.1": ("gpt-5.6-terra", nil),
-            "gpt-4o": ("gpt-5.6-terra", nil),
-            "moonshot-v1-8k": ("kimi-k2.6", nil),
-            "moonshot-v1-32k": ("kimi-k2.6", nil),
-            "moonshot-v1-128k": ("kimi-k2.6", nil),
-        ]
         for provider in LLMProvider.allCases {
             var settings = endpoint(provider)
             let current = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let mapped = aliases[current] {
-                settings.model = mapped.model
-                if let thinking = mapped.thinking {
-                    settings.thinkingEnabled = thinking
-                }
-                providers[provider] = settings
+            guard let row = ProviderCatalog.model(provider, current), let replacement = row.replaceWith else {
+                continue
             }
+            settings.model = replacement
+            if let thinking = row.replaceThinking {
+                settings.thinkingEnabled = thinking
+            }
+            providers[provider] = settings
         }
     }
 }

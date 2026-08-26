@@ -44,4 +44,10 @@ xcodebuild -project uyiprompt.xcodeproj -scheme uyiprompt \
   -configuration Release -destination 'platform=macOS,arch=arm64' build
 ```
 
+本机打包（可选公证）用 `scripts/release.sh`。公证需要先 `xcrun notarytool store-credentials`，然后：
+
+```bash
+NOTARY_PROFILE=uyiprompt-notary scripts/release.sh
+```
+
 首次需要在 **系统设置 → 隐私与安全性 → 辅助功能** 打开 uyiprompt。换过签名或重装后，删掉旧条目再把新的 App 拖进去。
