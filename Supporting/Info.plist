@@ -23,5 +23,7 @@
 	<string>https://github.com/uyiai/uyiprompt/releases/latest/download/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<key>SUPublicEDKey</key>
+	<string>yq9wI2whBshOkNx9ey0vN2V5h+HBGWQhq//5hSaSUKU=</string>
 </dict>
 </plist>
