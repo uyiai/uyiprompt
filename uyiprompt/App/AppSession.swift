@@ -312,7 +312,7 @@ final class AppSession: ObservableObject {
             try FileManager.default.moveItem(at: tmp, to: Self.fileURL)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: Self.fileURL.path)
         } catch {
-            NSLog("[uyiprompt] settings write failed: %@", error.localizedDescription)
+            Log.settings.error("settings write failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

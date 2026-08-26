@@ -266,33 +266,17 @@ enum EnhanceService {
         stream: Bool = false,
         onDelta: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
-        var body: [String: Any] = [
-            "model": model,
-            "messages": [
-                ["role": "system", "content": system],
-                ["role": "user", "content": user],
-            ],
-        ]
-        let openaiReasoning = ProviderCatalog.usesOpenAIReasoning(model)
-        if openaiReasoning {
-            body["max_completion_tokens"] = thinking ? max(maxTokens, 8192) : max(maxTokens, 2048)
-            body["reasoning_effort"] = thinking ? "medium" : "none"
-        } else {
-            body["temperature"] = temperature
-            body["max_tokens"] = thinking ? max(maxTokens, 8192) : maxTokens
-            let payload = provider?.thinkingPayload ?? .none
-            switch payload {
-            case .typeObject:
-                body["thinking"] = ["type": thinking ? "enabled" : "disabled"]
-                if thinking { body["reasoning_effort"] = "high" }
-            case .none:
-                if thinking, provider == .custom {
-                    body["thinking"] = ["type": "enabled"]
-                }
-            }
-        }
+        let body = try ChatCompletionRequest.build(
+            model: model,
+            system: system,
+            user: user,
+            maxTokens: maxTokens,
+            provider: provider,
+            thinking: thinking,
+            temperature: temperature,
+            stream: stream
+        ).encoded()
         if stream {
-            body["stream"] = true
             let assembled = try await postSSE(
                 url: url,
                 body: body,
@@ -324,7 +308,7 @@ enum EnhanceService {
 
     private static func postSSE(
         url: URL,
-        body: [String: Any],
+        body: Data,
         headers: [String: String],
         timeout: TimeInterval,
         onDelta: (@Sendable (String) -> Void)?
@@ -337,7 +321,7 @@ enum EnhanceService {
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = body
         let bytes: URLSession.AsyncBytes
         let response: URLResponse
         do {
@@ -367,14 +351,14 @@ enum EnhanceService {
             }
         }
         if truncated {
-            NSLog("[uyiprompt] model output hit max_tokens; result may be truncated")
+            Log.network.warning("model output hit max_tokens; result may be truncated")
         }
         return assembled
     }
 
     private static func postJSON(
         url: URL,
-        body: [String: Any],
+        body: Data,
         headers: [String: String],
         timeout: TimeInterval = 60
     ) async throws -> [String: Any] {
@@ -385,7 +369,7 @@ enum EnhanceService {
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = body
         let data: Data
         let response: URLResponse
         do {

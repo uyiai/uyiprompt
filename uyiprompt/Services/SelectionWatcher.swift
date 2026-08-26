@@ -80,7 +80,7 @@ final class SelectionWatcher {
                 self.windows?.hideActionBar()
             }
         }
-        NSLog("[uyiprompt] selection watcher installed")
+        Log.selection.info("selection watcher installed")
     }
 
     private struct EventPayload: Sendable {

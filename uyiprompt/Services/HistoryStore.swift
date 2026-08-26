@@ -85,7 +85,7 @@ final class HistoryStore: ObservableObject {
             try FileManager.default.moveItem(at: tmp, to: fileURL)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
         } catch {
-            NSLog("[uyiprompt] history write failed: %@", error.localizedDescription)
+            Log.settings.error("history write failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

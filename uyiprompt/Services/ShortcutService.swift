@@ -38,7 +38,7 @@ final class ShortcutService: @unchecked Sendable {
         if status == noErr, let hotKeyRef {
             hotKeys.append(hotKeyRef)
         } else {
-            NSLog("[uyiprompt] hotkey %u registration failed (status %d) — likely taken by another app", actionID, status)
+            Log.hotkeys.error("hotkey \(actionID) registration failed (status \(status)) — likely taken by another app")
         }
     }
 

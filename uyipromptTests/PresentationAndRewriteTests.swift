@@ -317,6 +317,57 @@ struct SelectionRecoveryTests {
     }
 }
 
+@Suite("Chat request body matrix")
+struct ChatCompletionRequestTests {
+    private func build(model: String, provider: LLMProvider?, thinking: Bool) -> ChatCompletionRequest {
+        ChatCompletionRequest.build(
+            model: model, system: "sys", user: "usr", maxTokens: 4096,
+            provider: provider, thinking: thinking, temperature: 0.3, stream: true
+        )
+    }
+
+    @Test func deepseekThinkingUsesTypeObjectPayload() {
+        let request = build(model: "deepseek-v4-flash", provider: .deepseek, thinking: true)
+        #expect(request.thinking == .init(type: "enabled"))
+        #expect(request.reasoningEffort == "high")
+        #expect(request.maxTokens == 8192)
+        #expect(request.maxCompletionTokens == nil)
+        #expect(request.stream == true)
+    }
+
+    @Test func deepseekWithoutThinkingDisablesPayload() {
+        let request = build(model: "deepseek-v4-flash", provider: .deepseek, thinking: false)
+        #expect(request.thinking == .init(type: "disabled"))
+        #expect(request.reasoningEffort == nil)
+        #expect(request.maxTokens == 4096)
+        #expect(request.temperature == 0.3)
+    }
+
+    @Test func openAIReasoningModelsUseCompletionTokens() {
+        let request = build(model: "gpt-5.6-luna", provider: .openai, thinking: false)
+        #expect(request.maxCompletionTokens == 4096)
+        #expect(request.reasoningEffort == "none")
+        #expect(request.maxTokens == nil)
+        #expect(request.temperature == nil)
+        #expect(request.thinking == nil)
+    }
+
+    @Test func customProviderOnlySendsThinkingWhenEnabled() {
+        #expect(build(model: "some-model", provider: .custom, thinking: false).thinking == nil)
+        #expect(build(model: "some-model", provider: .custom, thinking: true).thinking == .init(type: "enabled"))
+    }
+
+    @Test func encodedBodyUsesWireKeys() throws {
+        let data = try build(model: "deepseek-v4-flash", provider: .deepseek, thinking: true).encoded()
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(json["max_tokens"] as? Int == 8192)
+        #expect(json["reasoning_effort"] as? String == "high")
+        #expect((json["thinking"] as? [String: Any])?["type"] as? String == "enabled")
+        let messages = try #require(json["messages"] as? [[String: Any]])
+        #expect(messages.first?["role"] as? String == "system")
+    }
+}
+
 @Suite("Provider catalog and settings schema")
 struct CatalogAndSchemaTests {
     @Test func pickerOmitsRetiredModels() {
