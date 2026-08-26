@@ -362,6 +362,36 @@ struct LocalProviderAndPaletteTests {
     }
 }
 
+@Suite("Screen OCR")
+struct OCRServiceTests {
+    private func render(_ text: String) -> CGImage {
+        let size = NSSize(width: 600, height: 120)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 40, weight: .medium),
+            .foregroundColor: NSColor.black,
+        ]
+        (text as NSString).draw(at: NSPoint(x: 24, y: 36), withAttributes: attributes)
+        image.unlockFocus()
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
+    }
+
+    @Test func recognizesRenderedChineseAndEnglish() async throws {
+        let text = try await OCRService.recognize(render("你好 uyiprompt"))
+        #expect(text.contains("你好"))
+        #expect(text.lowercased().contains("uyiprompt"))
+    }
+
+    @Test func blankImageReportsNoText() async {
+        await #expect(throws: OCRService.OCRError.self) {
+            _ = try await OCRService.recognize(render(""))
+        }
+    }
+}
+
 @Suite("Models endpoint")
 struct ModelsServiceTests {
     @Test func modelsURLToleratesBaseURLShapes() throws {

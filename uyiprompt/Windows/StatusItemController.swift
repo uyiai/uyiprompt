@@ -54,6 +54,7 @@ final class StatusItemController: NSObject {
         menu.addItem(Self.item(L10n.t("menu.openPanel"), action: #selector(openPanel), target: self, symbol: "macwindow"))
         menu.addItem(Self.item(L10n.t("job.enhanceSelection"), action: #selector(enhanceSelection), target: self, symbol: "character.cursor.ibeam"))
         menu.addItem(Self.item(L10n.t("job.translateSelection"), action: #selector(translateSelection), target: self, symbol: "globe"))
+        menu.addItem(Self.item(L10n.t("menu.ocr"), action: #selector(captureText), target: self, symbol: "text.viewfinder"))
         menu.addItem(Self.item(L10n.t("menu.providers"), action: #selector(openProviders), target: self, symbol: "cpu"))
         menu.addItem(Self.item(L10n.t("menu.settings"), action: #selector(openSettings), target: self, symbol: "gearshape", key: ","))
         menu.addItem(Self.item(L10n.t("menu.onboarding"), action: #selector(openOnboarding), target: self, symbol: "questionmark.circle"))
@@ -150,6 +151,10 @@ final class StatusItemController: NSObject {
         guard let id = sender.representedObject as? String else { return }
         session?.currentProfileID = id
     }
+    @objc private func captureText() {
+        windows?.captureTextFromScreen()
+    }
+
     @objc private func checkForUpdates() {
         UpdateService.shared.checkForUpdates()
     }
