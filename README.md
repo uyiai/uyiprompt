@@ -4,7 +4,7 @@ macOS 菜单栏改写 / 翻译。选中文字后点选区下方的「改写」�
 
 窗口由 AppKit 托管，界面用 SwiftUI。读选区和粘贴走辅助功能 + 合成 ⌘C / ⌘V。模型走你自己的 OpenAI 兼容 `/v1/chat/completions`。
 
-当前版本 **0.4.0**：https://github.com/uyiai/uyiprompt/releases/tag/v0.4.0
+当前版本 **0.4.1**：https://github.com/uyiai/uyiprompt/releases/tag/v0.4.1
 
 ## 要求
 
