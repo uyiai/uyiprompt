@@ -24,6 +24,25 @@ xcodebuild -project uyiprompt.xcodeproj -scheme uyiprompt \
   -configuration Release -destination 'platform=macOS,arch=arm64' \
   -derivedDataPath "$DERIVED" build
 
+# Notarization requires every nested binary to carry OUR Developer ID
+# signature with a secure timestamp. Sparkle ships with upstream signatures,
+# so re-sign inside-out, then re-sign the app itself.
+IDENTITY="${IDENTITY:-Developer ID Application}"
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+if [[ -d "$SPARKLE" ]]; then
+  for nested in \
+    "$SPARKLE/Versions/B/XPCServices/Installer.xpc" \
+    "$SPARKLE/Versions/B/XPCServices/Downloader.xpc" \
+    "$SPARKLE/Versions/B/Autoupdate" \
+    "$SPARKLE/Versions/B/Updater.app" \
+    "$SPARKLE"; do
+    codesign --force --options runtime --timestamp \
+      --preserve-metadata=entitlements --sign "$IDENTITY" "$nested"
+  done
+fi
+codesign --force --options runtime --timestamp \
+  --entitlements Supporting/uyiprompt.entitlements --sign "$IDENTITY" "$APP"
+
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 
