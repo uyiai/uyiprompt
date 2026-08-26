@@ -1582,23 +1582,6 @@
         }
       }
     },
-    "menu.ocr": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capture Text from Screen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "截图取词"
-          }
-        }
-      }
-    },
     "menu.onboarding": {
       "extractionState": "manual",
       "localizations": {
@@ -2513,23 +2496,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷键"
-          }
-        }
-      }
-    },
-    "ocr.noText": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No text found in the capture. Try a larger, sharper region."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "截图里没识别到文字。试试框选更清晰、更大的区域。"
           }
         }
       }
@@ -4383,23 +4349,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "在微信、备忘录里选中文字，选区下方会出现改写 / 翻译，不挡住应用自带的复制菜单。点按钮后，在浮层里替换或复制。"
-          }
-        }
-      }
-    },
-    "shortcuts.ocr.caption": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Select a screen region; recognized text opens in the panel"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "框选屏幕区域，识别文字后放进面板"
           }
         }
       }

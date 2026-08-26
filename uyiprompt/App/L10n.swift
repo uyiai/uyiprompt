@@ -73,8 +73,13 @@ enum L10n {
     /// per-language bundles so the in-app language override works regardless
     /// of the system locale.
     static func t(_ key: String) -> String {
+        t(key, in: current)
+    }
+
+    /// Explicit-language lookup; avoids depending on the process-wide `current`.
+    static func t(_ key: String, in language: AppLanguage.Resolved) -> String {
         let missing = "\u{7F}"
-        let primary = current == .chinese ? zhBundle : enBundle
+        let primary = language == .chinese ? zhBundle : enBundle
         if let value = primary?.localizedString(forKey: key, value: missing, table: nil), value != missing {
             return value
         }

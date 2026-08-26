@@ -72,7 +72,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu(title: "uyiprompt")
         appMenu.addItem(withTitle: L10n.t("menu.openPanel"), action: #selector(openPanel(_:)), keyEquivalent: "u")
         appMenu.items.last?.keyEquivalentModifierMask = [.command, .shift]
-        appMenu.addItem(withTitle: L10n.t("menu.ocr"), action: #selector(captureText(_:)), keyEquivalent: "")
         appMenu.addItem(withTitle: L10n.t("menu.providers"), action: #selector(openProviders(_:)), keyEquivalent: "")
         appMenu.addItem(withTitle: L10n.t("menu.settings"), action: #selector(openSettings(_:)), keyEquivalent: ",")
         appMenu.addItem(withTitle: L10n.t("menu.onboarding"), action: #selector(openOnboarding(_:)), keyEquivalent: "")
@@ -118,10 +117,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openOnboarding(_ sender: Any?) {
         windows?.showOnboarding()
-    }
-
-    @objc private func captureText(_ sender: Any?) {
-        windows?.captureTextFromScreen()
     }
 
     @objc private func checkForUpdates(_ sender: Any?) {

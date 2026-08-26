@@ -390,8 +390,6 @@ struct SettingsView: View {
                     shortcutRow(L10n.t("shortcuts.enhance"), caption: L10n.t("job.enhanceSelection"), keys: ["⌃", "⇧", "E"])
                     SettingsHairline()
                     shortcutRow(L10n.t("shortcuts.translate"), caption: L10n.t("job.translateSelection"), keys: ["⌃", "⇧", "T"])
-                    SettingsHairline()
-                    shortcutRow(L10n.t("menu.ocr"), caption: L10n.t("shortcuts.ocr.caption"), keys: ["⌃", "⇧", "O"])
                 }
             }
             HowToStrip(shortcut: L10n.t("howto.action"), action: L10n.t("howto.replace"))

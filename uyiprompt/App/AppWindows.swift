@@ -116,29 +116,6 @@ final class AppWindows: ObservableObject {
         coordinator.enhancePalette()
     }
 
-    /// Screenshot → Vision OCR → draft panel, ready to translate or rewrite.
-    func captureTextFromScreen() {
-        if isOnboardingVisible {
-            onboarding.focus()
-            return
-        }
-        hidePopover()
-        hideActionBar()
-        Task { [weak self] in
-            do {
-                let text = try await OCRService.captureText()
-                self?.showPanel(draft: text, job: .translate)
-            } catch OCRService.OCRError.captureCancelled {
-                return
-            } catch {
-                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                self?.showPopover(
-                    state: .error(message, profile: L10n.t("menu.ocr"), job: .translate, recovery: .emptySelection),
-                    near: NSEvent.mouseLocation
-                )
-            }
-        }
-    }
 
     func showPopoverDemo() {
         popover.showDemo(near: NSEvent.mouseLocation)

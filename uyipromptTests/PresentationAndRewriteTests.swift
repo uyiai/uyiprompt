@@ -274,15 +274,15 @@ struct StoreAndStreamTests {
 @Suite("Interface language", .serialized)
 struct L10nTests {
     @Test func englishSwitchChangesVisibleCopy() {
-        let previous = L10n.current
-        defer { L10n.current = previous }
-        L10n.sync(.english)
-        #expect(L10n.t("job.enhance") == "Rewrite")
-        #expect(L10n.t("job.translate") == "Translate")
-        #expect(L10n.t("nav.providers") == "Models")
-        L10n.sync(.chinese)
-        #expect(L10n.t("job.enhance") == "改写")
-        #expect(L10n.t("nav.general") == "通用")
+        // Explicit-language lookups: other suites may construct AppSession()
+        // concurrently, which resyncs the process-wide language.
+        #expect(L10n.t("job.enhance", in: .english) == "Rewrite")
+        #expect(L10n.t("job.translate", in: .english) == "Translate")
+        #expect(L10n.t("nav.providers", in: .english) == "Models")
+        #expect(L10n.t("job.enhance", in: .chinese) == "改写")
+        #expect(L10n.t("nav.general", in: .chinese) == "通用")
+        #expect(L10n.t("no.such.key", in: .english) == "no.such.key")
+        #expect(AppLanguage.english.resolved == .english)
     }
 
     @Test func systemChineseResolvesToChinese() {
@@ -359,36 +359,6 @@ struct LocalProviderAndPaletteTests {
         var loading = ready
         loading.status = .loading
         #expect(!EnhancePopoverController.isPalette(loading))
-    }
-}
-
-@Suite("Screen OCR")
-struct OCRServiceTests {
-    private func render(_ text: String) -> CGImage {
-        let size = NSSize(width: 600, height: 120)
-        let image = NSImage(size: size)
-        image.lockFocus()
-        NSColor.white.setFill()
-        NSRect(origin: .zero, size: size).fill()
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 40, weight: .medium),
-            .foregroundColor: NSColor.black,
-        ]
-        (text as NSString).draw(at: NSPoint(x: 24, y: 36), withAttributes: attributes)
-        image.unlockFocus()
-        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
-    }
-
-    @Test func recognizesRenderedChineseAndEnglish() async throws {
-        let text = try await OCRService.recognize(render("你好 uyiprompt"))
-        #expect(text.contains("你好"))
-        #expect(text.lowercased().contains("uyiprompt"))
-    }
-
-    @Test func blankImageReportsNoText() async {
-        await #expect(throws: OCRService.OCRError.self) {
-            _ = try await OCRService.recognize(render(""))
-        }
     }
 }
 
