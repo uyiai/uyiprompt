@@ -71,7 +71,7 @@ enum EnhanceService {
         if trimmed.count > messageMax { throw EnhanceError.tooLong }
         let endpoint = settings.active
         let key = endpoint.key.trimmingCharacters(in: .whitespacesAndNewlines)
-        if key.isEmpty { throw EnhanceError.missingAPIKey }
+        if key.isEmpty, !settings.activeProvider.keyOptional { throw EnhanceError.missingAPIKey }
         let model = endpoint.model.trimmingCharacters(in: .whitespacesAndNewlines)
         if model.isEmpty { throw EnhanceError.missingModel }
         let url = try OpenAICompatibleEndpoint.chatCompletionsURL(from: endpoint.baseURL)
@@ -236,7 +236,7 @@ enum EnhanceService {
 
     static func testConnection(endpoint: LLMProviderSettings, provider: LLMProvider? = nil) async throws -> String {
         let key = endpoint.key.trimmingCharacters(in: .whitespacesAndNewlines)
-        if key.isEmpty { throw EnhanceError.missingAPIKey }
+        if key.isEmpty, provider?.keyOptional != true { throw EnhanceError.missingAPIKey }
         let model = endpoint.model.trimmingCharacters(in: .whitespacesAndNewlines)
         if model.isEmpty { throw EnhanceError.missingModel }
         let url = try OpenAICompatibleEndpoint.chatCompletionsURL(from: endpoint.baseURL)
@@ -276,11 +276,12 @@ enum EnhanceService {
             temperature: temperature,
             stream: stream
         ).encoded()
+        let headers: [String: String] = key.isEmpty ? [:] : ["Authorization": "Bearer \(key)"]
         if stream {
             let assembled = try await postSSE(
                 url: url,
                 body: body,
-                headers: ["Authorization": "Bearer \(key)"],
+                headers: headers,
                 timeout: thinking ? 90 : 60,
                 onDelta: onDelta
             )
@@ -290,7 +291,7 @@ enum EnhanceService {
         let json = try await postJSON(
             url: url,
             body: body,
-            headers: ["Authorization": "Bearer \(key)"],
+            headers: headers,
             timeout: thinking ? 90 : 60
         )
         if let choices = json["choices"] as? [[String: Any]],

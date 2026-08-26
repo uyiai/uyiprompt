@@ -41,6 +41,7 @@ final class EnhancePopoverController {
     private var panel: NSPanel?
     private var session: AppSession?
     private weak var windows: AppWindows?
+    private var keyMonitor: Any?
     private let model = PopoverModel(
         state: PopoverContentState(
             status: .loading,
@@ -72,6 +73,11 @@ final class EnhancePopoverController {
         )
     }
 
+    /// The "pick a style first" state drives the keyboard palette.
+    static func isPalette(_ state: PopoverContentState) -> Bool {
+        state.job == .enhance && state.status == .ready && state.enhancedText.isEmpty
+    }
+
     func show(state: PopoverContentState, near point: NSPoint) {
         model.state = state
         let window = ensureWindow()
@@ -85,12 +91,40 @@ final class EnhancePopoverController {
             policy: WindowPresentation.overlayPolicy,
             frame: Self.clampedFrame(anchor: point, size: CGSize(width: WindowMetrics.popoverDefault.width, height: height))
         )
+        if Self.isPalette(state) {
+            // Key without activating: the panel is nonactivating, so the host
+            // app keeps its selection while 1-9/Return work here.
+            window.makeKey()
+        }
     }
 
     var isVisible: Bool { panel?.isVisible == true }
 
     func hide() {
         panel?.orderOut(nil)
+    }
+
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let panel = self.panel, panel.isVisible, panel.isKeyWindow else { return event }
+            if event.keyCode == 53 { // esc closes the popover in any state
+                self.windows?.hidePopover()
+                return nil
+            }
+            guard Self.isPalette(self.model.state) else { return event }
+            if event.keyCode == 36 { // return runs the current style
+                self.windows?.coordinator.retry()
+                return nil
+            }
+            if let chars = event.charactersIgnoringModifiers,
+               let digit = Int(chars), (1...9).contains(digit),
+               let profiles = self.session?.profiles, digit <= profiles.count {
+                self.windows?.coordinator.switchProfile(profiles[digit - 1].id)
+                return nil
+            }
+            return event
+        }
     }
 
     private func ensureWindow() -> NSPanel {
@@ -117,6 +151,7 @@ final class EnhancePopoverController {
             firstMouse: true
         )
         panel = created
+        installKeyMonitor()
         return created
     }
 

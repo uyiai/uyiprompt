@@ -112,6 +112,10 @@ final class AppWindows: ObservableObject {
         coordinator.translateSelection()
     }
 
+    func enhancePaletteSelection() {
+        coordinator.enhancePalette()
+    }
+
     func showPopoverDemo() {
         popover.showDemo(near: NSEvent.mouseLocation)
     }

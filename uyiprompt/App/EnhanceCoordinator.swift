@@ -29,6 +29,11 @@ final class EnhanceCoordinator {
         start(job: .enhance)
     }
 
+    /// Capture the selection and show the style palette first (keyboard flow).
+    func enhancePalette() {
+        start(job: .enhance, forcePicker: true)
+    }
+
     func translateSelection() {
         start(job: .translate)
     }
@@ -42,7 +47,7 @@ final class EnhanceCoordinator {
         start(job: job, prefilledText: trimmed, bundleID: bundleID, anchor: point)
     }
 
-    private func start(job: SelectionJob, prefilledText: String? = nil, bundleID: String? = nil, anchor: NSPoint = NSEvent.mouseLocation) {
+    private func start(job: SelectionJob, prefilledText: String? = nil, bundleID: String? = nil, forcePicker: Bool = false, anchor: NSPoint = NSEvent.mouseLocation) {
         guard let session, let windows else { return }
         if windows.isOnboardingVisible {
             windows.showOnboarding()
@@ -75,7 +80,8 @@ final class EnhanceCoordinator {
                 windows: windows,
                 anchor: anchor,
                 prefilledText: prefilledText,
-                bundleID: bundleID
+                bundleID: bundleID,
+                forcePicker: forcePicker
             )
         }
     }
@@ -231,7 +237,8 @@ final class EnhanceCoordinator {
         windows: AppWindows,
         anchor: NSPoint,
         prefilledText: String? = nil,
-        bundleID: String? = nil
+        bundleID: String? = nil,
+        forcePicker: Bool = false
     ) async {
         let fallbackName = job == .translate ? L10n.t("job.translate") : session.currentProfile.localizedName
         if !SelectionService.isTrusted {
@@ -325,13 +332,13 @@ final class EnhanceCoordinator {
         )
         capture = stored
 
-        if job == .enhance, !session.enhancePopoverEnabled {
-            await requestWork(generation: gen, session: session, windows: windows, capture: stored, anchor: anchor, silent: true)
+        if job == .enhance, forcePicker || !session.autoEnhanceOnShortcut {
+            windows.showPopover(state: state(from: stored, session: session, status: .ready), near: anchor)
             return
         }
 
-        if job == .enhance, !session.autoEnhanceOnShortcut {
-            windows.showPopover(state: state(from: stored, session: session, status: .ready), near: anchor)
+        if job == .enhance, !session.enhancePopoverEnabled {
+            await requestWork(generation: gen, session: session, windows: windows, capture: stored, anchor: anchor, silent: true)
             return
         }
 

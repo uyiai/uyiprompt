@@ -35,7 +35,7 @@ struct ModelSetupCard: View {
 
             field(L10n.t("model.apiKey")) {
                 if let url = provider.signupURL {
-                    Button(L10n.t("model.getKey")) { NSWorkspace.shared.open(url) }
+                    Button(L10n.t(provider.keyOptional ? "model.download" : "model.getKey")) { NSWorkspace.shared.open(url) }
                         .buttonStyle(.borderless)
                         .font(.caption.weight(.semibold))
                 }
@@ -43,9 +43,9 @@ struct ModelSetupCard: View {
                 HStack(spacing: 8) {
                     Group {
                         if revealKey {
-                            TextField(provider.keyPlaceholder, text: keyBinding)
+                            TextField(provider.keyOptional ? L10n.t("model.keyOptionalPlaceholder") : provider.keyPlaceholder, text: keyBinding)
                         } else {
-                            SecureField(L10n.t("model.keyPlaceholder"), text: keyBinding)
+                            SecureField(L10n.t(provider.keyOptional ? "model.keyOptionalPlaceholder" : "model.keyPlaceholder"), text: keyBinding)
                         }
                     }
                     .textFieldStyle(.roundedBorder)
@@ -62,7 +62,7 @@ struct ModelSetupCard: View {
             }
 
             field(L10n.t("model.model")) {
-                if provider == .custom {
+                if provider.suggestedModels.isEmpty {
                     Button {
                         fetchModels()
                     } label: {
@@ -80,7 +80,7 @@ struct ModelSetupCard: View {
                 if !provider.suggestedModels.isEmpty {
                     CapsuleChooser(options: modelOptions, selection: modelBinding)
                 }
-                if provider == .custom, !fetchedModels.isEmpty {
+                if provider.suggestedModels.isEmpty, !fetchedModels.isEmpty {
                     Picker(L10n.t("model.model"), selection: modelBinding) {
                         if !endpoint.model.isEmpty, !fetchedModels.contains(endpoint.model) {
                             Text(endpoint.model).tag(endpoint.model)

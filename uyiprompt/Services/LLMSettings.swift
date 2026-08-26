@@ -4,6 +4,8 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
     case deepseek
     case openai
     case moonshot
+    case ollama
+    case lmstudio
     case custom
 
     var id: String { rawValue }
@@ -23,6 +25,8 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
     var suggestedModels: [String] { ProviderCatalog.pickerIDs(for: self) }
     var defaultModel: String { suggestedModels.first ?? "" }
     var supportsThinkingToggle: Bool { catalog.supportsThinking }
+    /// Local servers (Ollama, LM Studio) accept unauthenticated requests.
+    var keyOptional: Bool { catalog.keyOptional }
     var thinkingPayload: ProviderCatalog.ThinkingPayload { catalog.thinkingPayload }
 
     func displayName(for model: String) -> String {
@@ -60,22 +64,26 @@ struct LLMSettings: Equatable {
 
     func isConfigured(_ provider: LLMProvider) -> Bool {
         let settings = endpoint(provider)
-        return !settings.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let keyOK = provider.keyOptional || !settings.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return keyOK
             && !settings.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !settings.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func summary(for provider: LLMProvider) -> String {
         let settings = endpoint(provider)
-        if settings.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if settings.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !provider.keyOptional {
             return provider.caption
         }
         let model = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
-        return model.isEmpty ? L10n.t("model.hasKey") : model
+        if model.isEmpty {
+            return provider.keyOptional ? provider.caption : L10n.t("model.hasKey")
+        }
+        return model
     }
 
     var hasKey: Bool {
-        !active.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        activeProvider.keyOptional || !active.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var hasEndpoint: Bool {

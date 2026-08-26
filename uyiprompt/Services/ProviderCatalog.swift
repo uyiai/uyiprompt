@@ -23,6 +23,7 @@ struct ProviderCatalog {
         var defaultBaseURL: String
         var supportsThinking: Bool
         var thinkingPayload: ThinkingPayload
+        var keyOptional: Bool = false
         var models: [Model]
     }
 
@@ -87,6 +88,32 @@ struct ProviderCatalog {
                 Model(id: "moonshot-v1-32k", brand: "K2.6", qualifierKey: "model.oldName", retired: true, replaceWith: "kimi-k2.6"),
                 Model(id: "moonshot-v1-128k", brand: "K2.6", qualifierKey: "model.oldName", retired: true, replaceWith: "kimi-k2.6"),
             ]
+        ),
+        Vendor(
+            id: .ollama,
+            title: "Ollama",
+            captionKey: "provider.ollama.caption",
+            helpKey: "provider.ollama.help",
+            keyPlaceholder: "",
+            signupURL: "https://ollama.com/download",
+            defaultBaseURL: "http://localhost:11434/v1",
+            supportsThinking: false,
+            thinkingPayload: .none,
+            keyOptional: true,
+            models: []
+        ),
+        Vendor(
+            id: .lmstudio,
+            title: "LM Studio",
+            captionKey: "provider.lmstudio.caption",
+            helpKey: "provider.lmstudio.help",
+            keyPlaceholder: "",
+            signupURL: "https://lmstudio.ai",
+            defaultBaseURL: "http://localhost:1234/v1",
+            supportsThinking: false,
+            thinkingPayload: .none,
+            keyOptional: true,
+            models: []
         ),
         Vendor(
             id: .custom,

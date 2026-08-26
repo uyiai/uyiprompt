@@ -1922,6 +1922,23 @@
         }
       }
     },
+    "model.download": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "去下载"
+          }
+        }
+      }
+    },
     "model.fast": {
       "extractionState": "manual",
       "localizations": {
@@ -2071,6 +2088,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "隐藏密钥"
+          }
+        }
+      }
+    },
+    "model.keyOptionalPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local server — leave empty"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地服务无需密钥，留空即可"
           }
         }
       }
@@ -2819,6 +2853,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "选中文字，改写或翻译"
+          }
+        }
+      }
+    },
+    "palette.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1-9 pick a style · Return uses current · Esc closes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 1-9 选风格 · 回车用当前风格 · Esc 关闭"
           }
         }
       }
@@ -3707,6 +3758,40 @@
         }
       }
     },
+    "provider.lmstudio.caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local models · GUI"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地模型 · 图形界面"
+          }
+        }
+      }
+    },
+    "provider.lmstudio.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download a model in LM Studio and start the local server (Developer → Start Server), then tap Fetch models. Everything stays on this Mac; no key needed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 LM Studio 里下载模型并启动本地服务（Developer → Start Server），然后点「获取模型列表」选择。数据不出本机，无需密钥。"
+          }
+        }
+      }
+    },
     "provider.moonshot.caption": {
       "extractionState": "manual",
       "localizations": {
@@ -3737,6 +3822,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Moonshot 开放平台，创建 API Key 后粘贴过来。"
+          }
+        }
+      }
+    },
+    "provider.ollama.caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local models · free & offline"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地模型 · 免费离线"
+          }
+        }
+      }
+    },
+    "provider.ollama.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install and start Ollama, pull a model (e.g. ollama pull qwen3), then tap Fetch models. Everything stays on this Mac; no key needed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先安装并启动 Ollama，下载一个模型（如 ollama pull qwen3），然后点「获取模型列表」选择。数据不出本机，无需密钥。"
           }
         }
       }
@@ -4230,6 +4349,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "在微信、备忘录里选中文字，选区下方会出现改写 / 翻译，不挡住应用自带的复制菜单。点按钮后，在浮层里替换或复制。"
+          }
+        }
+      }
+    },
+    "shortcuts.palette": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rewrite with style picker"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择风格改写"
+          }
+        }
+      }
+    },
+    "shortcuts.palette.caption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the style palette; pick with number keys"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "弹出风格面板，按数字键选择"
           }
         }
       }

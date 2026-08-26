@@ -385,6 +385,8 @@ struct SettingsView: View {
                     SettingsHairline()
                     shortcutRow(L10n.t("shortcuts.panel"), caption: L10n.t("shortcuts.panel.caption"), keys: ["⌘", "⇧", "U"])
                     SettingsHairline()
+                    shortcutRow(L10n.t("shortcuts.palette"), caption: L10n.t("shortcuts.palette.caption"), keys: ["⌃", "⇧", "Space"])
+                    SettingsHairline()
                     shortcutRow(L10n.t("shortcuts.enhance"), caption: L10n.t("job.enhanceSelection"), keys: ["⌃", "⇧", "E"])
                     SettingsHairline()
                     shortcutRow(L10n.t("shortcuts.translate"), caption: L10n.t("job.translateSelection"), keys: ["⌃", "⇧", "T"])

@@ -287,6 +287,8 @@ extension LLMProvider {
         case .deepseek: "fish.fill"
         case .openai: "sparkles"
         case .moonshot: "moon.fill"
+        case .ollama: "desktopcomputer"
+        case .lmstudio: "internaldrive.fill"
         case .custom: "puzzlepiece.extension.fill"
         }
     }
@@ -296,6 +298,8 @@ extension LLMProvider {
         case .deepseek: Color(red: 0.29, green: 0.43, blue: 0.98)
         case .openai: Color(red: 0.08, green: 0.63, blue: 0.50)
         case .moonshot: Color(red: 0.18, green: 0.17, blue: 0.22)
+        case .ollama: Color(red: 0.55, green: 0.35, blue: 0.85)
+        case .lmstudio: Color(red: 0.20, green: 0.55, blue: 0.85)
         case .custom: Color(red: 0.40, green: 0.37, blue: 0.90)
         }
     }

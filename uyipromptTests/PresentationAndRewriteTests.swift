@@ -317,6 +317,51 @@ struct SelectionRecoveryTests {
     }
 }
 
+@Suite("Local providers and style palette")
+struct LocalProviderAndPaletteTests {
+    @Test func localProvidersNeedNoKey() throws {
+        #expect(LLMProvider.ollama.keyOptional)
+        #expect(LLMProvider.lmstudio.keyOptional)
+        #expect(!LLMProvider.deepseek.keyOptional)
+        var settings = LLMSettings.empty
+        settings.activeProvider = .ollama
+        var endpoint = settings.endpoint(.ollama)
+        endpoint.model = "qwen3"
+        settings.providers[.ollama] = endpoint
+        #expect(settings.isConfigured(.ollama))
+        #expect(settings.isReady)
+        let validated = try EnhanceService.validate(message: "hello", settings: settings)
+        #expect(validated.key.isEmpty)
+        #expect(validated.url.absoluteString == "http://localhost:11434/v1/chat/completions")
+        #expect(LLMProvider.lmstudio.defaultBaseURL == "http://localhost:1234/v1")
+    }
+
+    @Test func cloudProvidersStillRequireKey() {
+        var settings = LLMSettings.empty
+        settings.activeProvider = .deepseek
+        #expect(throws: EnhanceError.missingAPIKey) {
+            _ = try EnhanceService.validate(message: "hello", settings: settings)
+        }
+    }
+
+    @Test @MainActor func paletteStateIsPickStyleOnly() {
+        let ready = PopoverContentState(
+            status: .ready, profileId: "grammar", profileName: "校对",
+            originalText: "src", enhancedText: "", error: "", job: .enhance
+        )
+        #expect(EnhancePopoverController.isPalette(ready))
+        var done = ready
+        done.enhancedText = "out"
+        #expect(!EnhancePopoverController.isPalette(done))
+        var translate = ready
+        translate.job = .translate
+        #expect(!EnhancePopoverController.isPalette(translate))
+        var loading = ready
+        loading.status = .loading
+        #expect(!EnhancePopoverController.isPalette(loading))
+    }
+}
+
 @Suite("Models endpoint")
 struct ModelsServiceTests {
     @Test func modelsURLToleratesBaseURLShapes() throws {

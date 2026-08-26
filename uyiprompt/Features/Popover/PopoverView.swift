@@ -116,9 +116,7 @@ struct PopoverView: View {
                     }
                     ScrollView {
                         if model.state.enhancedText.isEmpty {
-                            Text(model.state.originalText)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            stylePalette
                         } else if mode == .changes {
                             ResultDiffView(original: model.state.originalText, current: model.state.enhancedText)
                         } else {
@@ -133,6 +131,56 @@ struct PopoverView: View {
                 }
             }
         }
+    }
+
+    /// Keyboard-first style picker: 1-9 selects, Return runs the current style.
+    private var stylePalette: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(model.state.originalText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            VStack(spacing: 2) {
+                ForEach(Array(session.profiles.prefix(9).enumerated()), id: \.element.id) { index, profile in
+                    Button {
+                        onSwitchProfile(profile.id)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("\(index + 1)")
+                                .font(.caption.weight(.semibold).monospaced())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 18, height: 18)
+                                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                            Image(systemName: profile.symbol)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 16)
+                            Text(profile.localizedName)
+                                .font(.callout)
+                            Spacer(minLength: 0)
+                            if profile.id == (model.state.profileId.isEmpty ? session.currentProfileID : model.state.profileId) {
+                                Image(systemName: "return")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .contentShape(Rectangle())
+                        .background(
+                            profile.id == (model.state.profileId.isEmpty ? session.currentProfileID : model.state.profileId)
+                                ? Color.accentColor.opacity(0.10) : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Text(L10n.t("palette.hint"))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Quick follow-up rewrites on the current result.

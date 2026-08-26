@@ -17,6 +17,7 @@ final class ShortcutService: @unchecked Sendable {
         register(keyCode: UInt32(kVK_ANSI_U), modifiers: UInt32(cmdKey + shiftKey), actionID: 1)
         register(keyCode: UInt32(kVK_ANSI_E), modifiers: UInt32(controlKey + shiftKey), actionID: 2)
         register(keyCode: UInt32(kVK_ANSI_T), modifiers: UInt32(controlKey + shiftKey), actionID: 3)
+        register(keyCode: UInt32(kVK_Space), modifiers: UInt32(controlKey + shiftKey), actionID: 4)
         installHandler()
     }
 
@@ -79,6 +80,7 @@ final class ShortcutService: @unchecked Sendable {
         case 1: windows?.togglePanel()
         case 2: windows?.enhanceSelection()
         case 3: windows?.translateSelection()
+        case 4: windows?.enhancePaletteSelection()
         default: break
         }
     }

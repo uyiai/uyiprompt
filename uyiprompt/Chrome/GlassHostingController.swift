@@ -120,9 +120,15 @@ enum ProductWindowFactory {
         return panel
     }
 
+    /// Borderless panels refuse key status by default; the style palette in the
+    /// popover needs it for 1-9 / Return shortcuts without activating the app.
+    final class KeyableOverlayPanel: NSPanel {
+        override var canBecomeKey: Bool { true }
+    }
+
     /// Non-activating overlay that must not steal the editor's selection.
     static func makeEnhancePopover(size: CGSize) -> NSPanel {
-        let panel = NSPanel(
+        let panel = KeyableOverlayPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
