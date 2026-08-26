@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(languageDidChange(_:)), name: .uyiLanguageDidChange, object: nil)
 
         if isRunningUnderTests { return }
+        _ = UpdateService.shared
 
         let needsOnboarding = !session.onboardingCompleted
         if needsOnboarding {
@@ -74,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle: L10n.t("menu.providers"), action: #selector(openProviders(_:)), keyEquivalent: "")
         appMenu.addItem(withTitle: L10n.t("menu.settings"), action: #selector(openSettings(_:)), keyEquivalent: ",")
         appMenu.addItem(withTitle: L10n.t("menu.onboarding"), action: #selector(openOnboarding(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: L10n.t("menu.checkUpdates"), action: #selector(checkForUpdates(_:)), keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
@@ -115,6 +117,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openOnboarding(_ sender: Any?) {
         windows?.showOnboarding()
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        UpdateService.shared.checkForUpdates()
     }
 
     @objc private func languageDidChange(_ sender: Any?) {

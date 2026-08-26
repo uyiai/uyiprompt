@@ -57,6 +57,7 @@ final class StatusItemController: NSObject {
         menu.addItem(Self.item(L10n.t("menu.providers"), action: #selector(openProviders), target: self, symbol: "cpu"))
         menu.addItem(Self.item(L10n.t("menu.settings"), action: #selector(openSettings), target: self, symbol: "gearshape", key: ","))
         menu.addItem(Self.item(L10n.t("menu.onboarding"), action: #selector(openOnboarding), target: self, symbol: "questionmark.circle"))
+        menu.addItem(Self.item(L10n.t("menu.checkUpdates"), action: #selector(checkForUpdates), target: self, symbol: "arrow.triangle.2.circlepath"))
         menu.addItem(.separator())
         menu.addItem(recentMenuItem())
         menu.addItem(.separator())
@@ -149,5 +150,9 @@ final class StatusItemController: NSObject {
         guard let id = sender.representedObject as? String else { return }
         session?.currentProfileID = id
     }
+    @objc private func checkForUpdates() {
+        UpdateService.shared.checkForUpdates()
+    }
+
     @objc private func quit() { NSApp.terminate(nil) }
 }

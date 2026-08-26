@@ -107,7 +107,8 @@ final class EnhancePopoverController {
                 onCopy: { [weak windows] in windows?.coordinator.copyResult() },
                 onRetry: { [weak windows] in windows?.coordinator.retry() },
                 onSwitchProfile: { [weak windows] id in windows?.coordinator.switchProfile(id) },
-                onSwitchLanguage: { [weak windows] language in windows?.coordinator.switchTranslateLanguage(language) }
+                onSwitchLanguage: { [weak windows] language in windows?.coordinator.switchTranslateLanguage(language) },
+                onRefine: { [weak windows] instruction in windows?.coordinator.refine(instruction) }
             )
             .environmentObject(session)
             .environmentObject(windows),

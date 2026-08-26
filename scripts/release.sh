@@ -42,3 +42,17 @@ if [[ -n "${NOTARY_PROFILE:-}" ]]; then
 else
   echo "Skip notary (set NOTARY_PROFILE to a notarytool keychain profile)."
 fi
+
+# Sparkle appcast: point generate_appcast at the folder holding the zip.
+# The binary ships with the Sparkle SPM checkout pulled by the Xcode build.
+GENERATE_APPCAST="$(find "$HOME/Library/Developer/Xcode/DerivedData" "$DERIVED" -type f -name generate_appcast -path "*artifacts*" 2>/dev/null | head -1 || true)"
+if [[ -n "$GENERATE_APPCAST" ]]; then
+  APPCAST_DIR="$(dirname "$ZIP")"
+  "$GENERATE_APPCAST" \
+    --link "https://github.com/uyiai/uyiprompt" \
+    --download-url-prefix "https://github.com/uyiai/uyiprompt/releases/download/v${VERSION}/" \
+    "$APPCAST_DIR"
+  echo "Appcast $APPCAST_DIR/appcast.xml — upload it (and the zip) to the GitHub release."
+else
+  echo "generate_appcast not found; build once in Xcode so SPM fetches Sparkle, then rerun."
+fi

@@ -101,6 +101,85 @@ final class EnhanceCoordinator {
         runWork(on: capture)
     }
 
+    /// Rewrite the current result once more with a user instruction
+    /// ("shorter", "more formal", or free text). Keeps the original selection
+    /// so diff and replace still target the source text.
+    func refine(_ instruction: String) {
+        guard let session, let windows else { return }
+        guard var capture, capture.job == .enhance, !capture.enhancedText.isEmpty else { return }
+        let trimmedInstruction = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedInstruction.isEmpty else { return }
+
+        generation += 1
+        let gen = generation
+        let base = capture.enhancedText
+        capture.enhancedText = ""
+        self.capture = capture
+        let anchor = NSEvent.mouseLocation
+        windows.showPopover(state: state(from: capture, session: session, status: .loading), near: anchor)
+        let snapshot = capture
+        task?.cancel()
+        task = Task { [weak self] in
+            do {
+                let result = try await EnhanceService.enhance(
+                    message: base,
+                    profilePrompt: "Revise the text according to this instruction: \(trimmedInstruction)\n"
+                        + "Apply only that change; keep the meaning, facts, and original language unless the instruction says otherwise.",
+                    settings: session.llm,
+                    language: session.enhanceLanguage,
+                    onDelta: { piece in
+                        Task { @MainActor in
+                            guard let self, gen == self.generation else { return }
+                            var stored = self.capture ?? snapshot
+                            stored.enhancedText += piece
+                            self.capture = stored
+                            guard !self.streamRenderScheduled else { return }
+                            self.streamRenderScheduled = true
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 60_000_000)
+                                self.streamRenderScheduled = false
+                                guard gen == self.generation, let latest = self.capture else { return }
+                                windows.showPopover(state: self.state(from: latest, session: session, status: .loading), near: anchor)
+                            }
+                        }
+                    }
+                )
+                guard let self, gen == self.generation else { return }
+                var stored = snapshot
+                stored.enhancedText = result
+                self.capture = stored
+                session.recordHistory(
+                    job: .enhance,
+                    original: stored.originalText,
+                    result: result,
+                    label: self.label(for: stored, session: session)
+                )
+                windows.showPopover(state: self.state(from: stored, session: session, status: .ready), near: anchor)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, gen == self.generation else { return }
+                // Restore the previous result so the user does not lose it.
+                var stored = snapshot
+                stored.enhancedText = base
+                self.capture = stored
+                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                windows.showPopover(
+                    state: .error(
+                        message,
+                        profile: self.label(for: stored, session: session),
+                        profileId: stored.profileID,
+                        original: stored.originalText,
+                        enhanced: base,
+                        job: .enhance,
+                        translateLanguage: stored.translateLanguage
+                    ),
+                    near: anchor
+                )
+            }
+        }
+    }
+
     func copyResult() {
         guard let text = capture?.enhancedText, !text.isEmpty else { return }
         NSPasteboard.general.clearContents()

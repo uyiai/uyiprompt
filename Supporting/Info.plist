@@ -19,5 +19,9 @@
 	<string>uyiprompt 需要读取当前 App，并把改写后的文字写回去。</string>
 	<key>NSQuitAlwaysKeepsWindows</key>
 	<false/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/uyiai/uyiprompt/releases/latest/download/appcast.xml</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>

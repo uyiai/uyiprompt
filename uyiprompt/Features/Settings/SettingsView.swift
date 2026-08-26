@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
@@ -7,6 +8,7 @@ struct SettingsView: View {
     @EnvironmentObject private var windows: AppWindows
     @State private var apps: [InstalledApp] = []
     @State private var accessibilityOn = SelectionService.isTrusted
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
         HStack(spacing: 0) {
@@ -198,6 +200,19 @@ struct SettingsView: View {
 
             SettingsSection(title: L10n.t("section.desktop")) {
                 VStack(spacing: 0) {
+                    toggleRow(L10n.t("desktop.launchAtLogin"), isOn: $launchAtLogin) {
+                        do {
+                            if launchAtLogin {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            Log.settings.error("launch-at-login toggle failed: \(error.localizedDescription, privacy: .public)")
+                        }
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
+                    }
+                    SettingsHairline()
                     toggleRow(L10n.t("desktop.dock"), isOn: $session.showDockIcon) {
                         windows.applyDockPreference()
                     }

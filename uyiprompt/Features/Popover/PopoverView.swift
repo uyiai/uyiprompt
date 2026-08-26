@@ -7,12 +7,14 @@ struct PopoverView: View {
     @EnvironmentObject private var windows: AppWindows
     @State private var mode: ResultViewMode = .changes
     @State private var copied = false
+    @State private var refineText = ""
     var onClose: () -> Void
     var onReplace: () -> Void
     var onCopy: () -> Void
     var onRetry: () -> Void
     var onSwitchProfile: (String) -> Void
     var onSwitchLanguage: (TranslateLanguage) -> Void
+    var onRefine: (String) -> Void = { _ in }
 
     private var isTranslate: Bool { model.state.job == .translate }
 
@@ -125,9 +127,36 @@ struct PopoverView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
+                    if !model.state.enhancedText.isEmpty {
+                        refineBar
+                    }
                 }
             }
         }
+    }
+
+    /// Quick follow-up rewrites on the current result.
+    private var refineBar: some View {
+        HStack(spacing: 6) {
+            refineChip(L10n.t("refine.shorter"), instruction: "Make it shorter")
+            refineChip(L10n.t("refine.formal"), instruction: "Make it more formal")
+            refineChip(L10n.t("refine.casual"), instruction: "Make it more casual and conversational")
+            TextField(L10n.t("refine.placeholder"), text: $refineText)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .onSubmit {
+                    let instruction = refineText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !instruction.isEmpty else { return }
+                    refineText = ""
+                    onRefine(instruction)
+                }
+        }
+    }
+
+    private func refineChip(_ title: String, instruction: String) -> some View {
+        Button(title) { onRefine(instruction) }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
     }
 
     @ViewBuilder
