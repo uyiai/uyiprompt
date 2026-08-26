@@ -199,4 +199,12 @@ enum OpenAICompatibleEndpoint {
         guard let url = URL(string: base + "/v1/chat/completions") else { throw EnhanceError.missingBaseURL }
         return url
     }
+
+    /// `/v1/models` next to the chat endpoint, tolerating the same base URL shapes.
+    static func modelsURL(from baseURL: String) throws -> URL {
+        let chat = try chatCompletionsURL(from: baseURL)
+        let base = chat.absoluteString.replacingOccurrences(of: "/chat/completions", with: "/models")
+        guard let url = URL(string: base) else { throw EnhanceError.missingBaseURL }
+        return url
+    }
 }

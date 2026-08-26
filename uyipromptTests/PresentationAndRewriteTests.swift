@@ -317,6 +317,23 @@ struct SelectionRecoveryTests {
     }
 }
 
+@Suite("Models endpoint")
+struct ModelsServiceTests {
+    @Test func modelsURLToleratesBaseURLShapes() throws {
+        #expect(try OpenAICompatibleEndpoint.modelsURL(from: "https://api.deepseek.com/v1").absoluteString == "https://api.deepseek.com/v1/models")
+        #expect(try OpenAICompatibleEndpoint.modelsURL(from: "https://api.example.com").absoluteString == "https://api.example.com/v1/models")
+        #expect(try OpenAICompatibleEndpoint.modelsURL(from: "http://localhost:11434/v1/").absoluteString == "http://localhost:11434/v1/models")
+    }
+
+    @Test func parseReadsOpenAIAndBareArrays() {
+        let openai = #"{"object":"list","data":[{"id":"b-model"},{"id":"a-model"},{"id":"a-model"}]}"#
+        #expect(ModelsService.parse(Data(openai.utf8)) == ["a-model", "b-model"])
+        let bare = #"[{"id":"m1"},{"name":"no-id"}]"#
+        #expect(ModelsService.parse(Data(bare.utf8)) == ["m1"])
+        #expect(ModelsService.parse(Data("not json".utf8)) == [])
+    }
+}
+
 @Suite("Chat request body matrix")
 struct ChatCompletionRequestTests {
     private func build(model: String, provider: LLMProvider?, thinking: Bool) -> ChatCompletionRequest {

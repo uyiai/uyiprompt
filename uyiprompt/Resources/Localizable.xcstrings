@@ -1939,6 +1939,57 @@
         }
       }
     },
+    "model.fetch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fetch models"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取模型列表"
+          }
+        }
+      }
+    },
+    "model.fetchEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No models returned; enter the model name manually"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接口没有返回模型，请手动填写模型名"
+          }
+        }
+      }
+    },
+    "model.fetched": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fetched %d models"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取到 %d 个模型"
+          }
+        }
+      }
+    },
     "model.flagship": {
       "extractionState": "manual",
       "localizations": {

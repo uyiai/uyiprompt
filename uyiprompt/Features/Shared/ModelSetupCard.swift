@@ -13,6 +13,9 @@ struct ModelSetupCard: View {
     @State private var testing = false
     @State private var testMessage = ""
     @State private var testOK = false
+    @State private var fetchingModels = false
+    @State private var fetchedModels: [String] = []
+    @State private var fetchMessage = ""
 
     private var endpoint: LLMProviderSettings { session.llm.endpoint(provider) }
     private var thisReady: Bool { session.llm.isConfigured(provider) }
@@ -59,14 +62,44 @@ struct ModelSetupCard: View {
             }
 
             field(L10n.t("model.model")) {
-                EmptyView()
+                if provider == .custom {
+                    Button {
+                        fetchModels()
+                    } label: {
+                        if fetchingModels {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Text(L10n.t("model.fetch"))
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.caption.weight(.semibold))
+                    .disabled(fetchingModels || endpoint.baseURL.isEmpty)
+                }
             } content: {
                 if !provider.suggestedModels.isEmpty {
                     CapsuleChooser(options: modelOptions, selection: modelBinding)
                 }
+                if provider == .custom, !fetchedModels.isEmpty {
+                    Picker(L10n.t("model.model"), selection: modelBinding) {
+                        if !endpoint.model.isEmpty, !fetchedModels.contains(endpoint.model) {
+                            Text(endpoint.model).tag(endpoint.model)
+                        }
+                        ForEach(fetchedModels, id: \.self) { id in
+                            Text(id).tag(id)
+                        }
+                    }
+                    .labelsHidden()
+                }
                 if showModelField {
                     TextField(L10n.t("model.modelPlaceholder"), text: modelBinding)
                         .textFieldStyle(.roundedBorder)
+                }
+                if !fetchMessage.isEmpty {
+                    Text(fetchMessage)
+                        .font(.caption)
+                        .foregroundStyle(fetchedModels.isEmpty ? Color.red : Color.secondary)
+                        .lineLimit(2)
                 }
             }
 
@@ -140,6 +173,8 @@ struct ModelSetupCard: View {
             testMessage = ""
             testOK = false
             revealKey = false
+            fetchedModels = []
+            fetchMessage = ""
         }
     }
 
@@ -278,6 +313,30 @@ struct ModelSetupCard: View {
             get: { endpoint.thinkingEnabled },
             set: { newValue in update { $0.thinkingEnabled = newValue } }
         )
+    }
+
+    private func fetchModels() {
+        fetchingModels = true
+        fetchMessage = ""
+        let target = session.llm.endpoint(provider)
+        Task {
+            defer { fetchingModels = false }
+            do {
+                let models = try await ModelsService.listModels(baseURL: target.baseURL, key: target.key)
+                fetchedModels = models
+                if models.isEmpty {
+                    fetchMessage = L10n.t("model.fetchEmpty")
+                } else {
+                    fetchMessage = L10n.format("model.fetched", models.count)
+                    if endpoint.model.isEmpty, let first = models.first {
+                        update { $0.model = first }
+                    }
+                }
+            } catch {
+                fetchedModels = []
+                fetchMessage = error.localizedDescription
+            }
+        }
     }
 
     private func test() {
